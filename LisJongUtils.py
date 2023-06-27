@@ -28,6 +28,142 @@ for line in meldsfile:
     meldstable[parts[0]] = int(parts[1].strip())
 
 
+def calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_):
+    fu = 20
+    #面前論で10
+    if len(exposedstrlist_) == 0 and not winbyself_:
+        fu += 10
+
+    #上がり方につく符
+    for elem in closedhandstr_:
+        if elem[0] != "(" and elem[0] != "[":
+            #頭なら2
+            if len(elem) == 2:
+                fu += 2
+            #カンチャン、ペンちゃんなら2
+            elif int(elem[0]) == int(elem[2]) - 2 or (elem[0] == "1" and elem[2] == "2") or (elem[0] == "8" and elem[2] == "9"):
+                fu += 2
+
+    #合体
+    melded = meld(closedhandstr_, exposedstrlist_, winningpai_)
+
+    for trip in melded:
+        if trip.startswith("["):
+            #自風、場風ならそれぞれ+2
+            if trip[1:3] == prevailingwind_:
+                fu += 2
+            if trip[1:3] == ownwind_:
+                fu += 2
+        elif trip.startswith("("):
+            #順子ならなし
+            nowp = 0
+            if trip[1:3] != trip[3:5]:
+                fu += 0
+            #3つ
+            else:
+                if paicheck_simple(trip[1:3]):
+                    nowp = 4
+                else:
+                    nowp = 8
+                #カンなら倍
+                if len(trip) == 10:
+                    nowp *= 2
+                fu += nowp
+        elif trip.startswith("{"):
+            #順子ならなし
+            nowp = 0
+            if trip[1:3] != trip[3:5]:
+                fu += 0
+            #3つ
+            else:
+                if paicheck_simple(trip[1:3]):
+                    nowp = 2
+                else:
+                    nowp = 4
+                #カンなら倍
+                if len(trip) == 10:
+                    nowp *= 2
+                fu += nowp
+
+    #特殊：平和自摸=20
+    if winbyself_ and fu > 20:
+        fu += 2
+
+    return fu
+
+
+def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_):
+
+    #
+    yaku_list = []
+
+    # ふけいさん
+    fu = calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_)
+
+    # 立直していたら追加
+    if riichi_ == 1:
+        yaku_list.append("Ready")
+    elif riichi_ == 2:
+        yaku_list.append("Ready 2")
+
+    # 一発の追加
+    if oneshot_:
+        yaku_list.append("One Shot")
+
+    # 海底　ホー艇
+    if last_:
+        if winbyself_:
+            yaku_list.append("Last Pick")
+        else:
+            yaku_list.append("Last Discard")
+
+    # 平和の判定 tsumo20 or ron30
+    if len(exposedstrlist_) == 0 and ((winbyself_ and fu == 20) or (not winbyself_ and fu == 30)):
+        yaku_list.append("Peace")
+
+    # タンヤオの判定
+    if yakucheck_simples(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("All Simples")
+
+    # 1peko, 2peko
+    if yakucheck_1peko(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("1Peko")
+    elif yakucheck_2peko(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("2Peko")
+
+    # 役牌
+
+
+    # ちゃん田、うんちゃん
+    if yakucheck_junchan(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Junchan")
+    elif yakucheck_chanta(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Chanta")
+
+    #ほんいつけい
+    if yakucheck_semiflush(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Semi-Flush")
+    elif yakucheck_flush(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Flush")
+
+    han = 1
+
+    point, comment = getpoints(fu, han, is_dealer_, winbyself_)
+
+    return point, comment, yaku_list
+
+
+def count_han(yakulist_):
+    handict = {
+        "Ready":1,
+        "Ready 2":2,
+        "One Shot":1,
+        "Last Pick":1,
+        "Last Discard":1,
+        "1Peko":1,
+        "All Simples":1,
+        "2Peko":3,
+    }
 
 def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_):
     # 面子の取り方ごとに再起させる
@@ -714,7 +850,7 @@ if __name__ == '__main__':
     naki = []
     agari = "9s"
 
-    result = yakucheck_junchan(hand, naki, agari)
+    result = calculate_fu(hand, naki, agari, True, False, "2z", "2z")
 
     for line in problemfile:
         parts = line.split(" ")
