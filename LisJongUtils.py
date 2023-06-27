@@ -125,6 +125,12 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     if yakucheck_simples(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("All Simples")
 
+    # 3色の判定
+    if yakucheck_3color_chow(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("3 Color Straights")
+    if yakucheck_3color_pong(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("3 Color Triplets")
+
     # 1peko, 2peko
     if yakucheck_1peko(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("1Peko")
@@ -145,6 +151,14 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
         yaku_list.append("Semi-Flush")
     elif yakucheck_flush(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("Flush")
+
+    # 一気通貫
+    if yakucheck_straight(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Straight")
+
+    # といとい
+    if yakucheck_toitoi(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("All Triplets")
 
     han = 1
 
@@ -406,6 +420,41 @@ def yakucheck_junchan(closedhandstr_, exposes_, winningpai_):
     # 全てにやおちゅーはある、字牌と中針もあればいい
     return simpleflag
 
+#一気通貫
+def yakucheck_straight(closedhandstr_, exposes_, winningpai_):
+    melded = debuff(meld(closedhandstr_, exposes_, winningpai_))
+    #1, 4, 7ではじまる順子のみ残す
+    firsts = [[], [], []]
+    consert = {"m":0, "p":1, "s":2}
+
+    for trip in melded:
+        if trip[0] != trip[2]:
+            firsts[consert[trip[1]]].append(int(trip[0]))
+
+    #どれかに147がそろっていれば成功
+    for trophy in firsts:
+        if 1 in trophy and 4 in trophy and 7 in trophy:
+            return True
+    #失敗なら
+    return False
+
+
+#対々和
+def yakucheck_toitoi(closedhandstr_, exposes_, winningpai_):
+    melded = meld(closedhandstr_, exposes_, winningpai_)
+    #四あんこではない、全部かんかぽん
+    anko4flag = True
+    for trip in melded:
+        if trip.startswith("{"):
+            anko4flag = False
+        #順子ならば終了
+        if trip[1] != trip[3]:
+            return  False
+
+    #最後まで残っていれば、4ankoチェック
+    return not anko4flag
+
+
 
 #3色同刻
 def yakucheck_3color_pong(closedhandstr_, exposes_, winningpai_):
@@ -503,6 +552,29 @@ def yakkucheck_big3dragon(closedhandstr_, exposes_, winningpai_):
             flagnumber += 100
 
     return flagnumber == 111
+
+#小三元
+def yakucheck_little3dragon(closedhandstr_, exposes_, winningpai_):
+    melded = meld(closedhandstr_, exposes_, winningpai_)
+    raw = debuff(melded)
+    flagnumber = 0
+    for elem in raw:
+        if elem.startswith("5z5z5z"):
+            flagnumber += 1
+        elif elem.startswith("6z6z6z"):
+            flagnumber += 10
+        elif elem.startswith("7z7z7z"):
+            flagnumber += 100
+        # 頭の場合
+        if elem == "5z5z":
+            flagnumber += 3
+        elif elem == "6z6z":
+            flagnumber += 30
+        elif elem == "7z7z":
+            flagnumber += 300
+
+    return flagnumber in [113, 131, 311]
+
 
 #大四喜
 def yakucheck_big4wind(closedhandstr_, exposes_, winningpai_):
@@ -846,11 +918,11 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(1p1p1p)", "(1m2m3m)", "[2z2z]", "9s9s", "(7m8m9m)"]
+    hand = ["(1p2p3p)", "(4p5p6p)", "[2z2z]", "7s8s", "(1s2s3s)"]
     naki = []
     agari = "9s"
 
-    result = calculate_fu(hand, naki, agari, True, False, "2z", "2z")
+    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 0, False, False, False, ["1m"])
 
     for line in problemfile:
         parts = line.split(" ")
