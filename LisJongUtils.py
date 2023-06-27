@@ -103,6 +103,37 @@ def paicheck_orphan(haicode_):
     return paicheck_terminal(haicode_) or paicheck_honor(haicode_)
 
 
+# 完成面子 () 副露 {}
+# 完成頭 []
+# 待ち　なし
+# (1m2m3m), (3m4m5m), [2p2p],
+def meld(closedhandstr_, exposes_, winningpai_, tsumo_=True):
+    hands = []
+    for menzu in closedhandstr_:
+        if menzu[0] == "(":
+            hands.append("({0})".format(menzu.strip("()")))
+        elif menzu[0] == "[":
+            hands.append("[{0}]".format(menzu.strip("[]")))
+        else:
+            if len(menzu) == 2:
+                hands.append("[{0}{1}]".format(menzu, winningpai_))
+            elif len(menzu) == 4:
+                # 順子の場合どっちが咲か
+                sample = menzu[0:1]
+                if sample < winningpai_:
+                    inner = "{0}{1}".format(menzu, winningpai_)
+                else:
+                    inner = "{0}{1}".format(winningpai_, menzu)
+                if tsumo_:
+                    hands.append("({0})".format(inner))
+                else:
+                    hands.append("{" + inner + "}")
+
+    hands.extend(exposes_)
+
+    return hands
+
+
 # 役チェック
 # たんやお
 def yakucheck_simples(closedhandstr_, exposes_, winningpai_):
@@ -148,6 +179,7 @@ def yakucheck_2peko(closedhandstr_, exposes_, winningpai_):
                 peko1 = melded[i]
     return sameflag == 2
 
+
 #3アンコウ
 def yakucheck_3conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
     melded = meld(closedhandstr_, exposes_, winningpai_, winbydraw_)
@@ -172,7 +204,7 @@ def yakucheck_3color_chow(closedhandstr_, exposes_, winningpai_):
 
     #3以上残っているか
     if len(judger) < 3:
-        return  False
+        return False
 
     #各色の最初の順子を残す
     m_firsts = []
@@ -191,8 +223,77 @@ def yakucheck_3color_chow(closedhandstr_, exposes_, winningpai_):
     for first in m_firsts:
         if first in p_firsts and first in s_firsts:
             successflag = True
-    return  successflag
+    return successflag
 
+
+#チャンタ
+def yakucheck_chanta(closedhandstr_, exposes_, winningpai_):
+    #全てにorphanが入っていて、１つはsimpleが入っている
+    bared = debuff(meld(closedhandstr_, exposes_, winningpai_))
+
+    simpleflag = False #1はたんやおがあるか、(ないとほんろ
+    honorflag = False # 1は字牌があるか(ないとじゅんちゃん
+    for ele in bared:
+        yaochu_1flag = False
+        for i in range(int(len(ele)/2)):
+            needlepai = ele[i*2:i*2+2]
+            if paicheck_orphan(needlepai):
+                yaochu_1flag = True
+            if paicheck_simple(needlepai):
+                simpleflag = True
+            if paicheck_honor(needlepai):
+                honorflag = True
+        #やおちゅうなしならすぐだめ
+        if not yaochu_1flag:
+            return False
+
+    #全てにやおちゅーはある、字牌と中針もあればいい
+    return simpleflag and honorflag
+
+
+def yakucheck_junchan(closedhandstr_, exposes_, winningpai_):
+    bared = debuff(meld(closedhandstr_, exposes_, winningpai_))
+
+    simpleflag = False  # 1はたんやおがあるか、(ないとchinnro
+    for ele in bared:
+        yaochu_1flag = False
+        for i in range(int(len(ele) / 2)):
+            needlepai = ele[i * 2:i * 2 + 2]
+            if paicheck_terminal(needlepai):
+                yaochu_1flag = True
+            if paicheck_simple(needlepai):
+                simpleflag = True
+        # やおちゅうなしならすぐだめ
+        if not yaochu_1flag:
+            return False
+
+    # 全てにやおちゅーはある、字牌と中針もあればいい
+    return simpleflag
+
+
+#3色同刻
+def yakucheck_3color_pong(closedhandstr_, exposes_, winningpai_):
+    melded = debuff(meld(closedhandstr_, exposes_, winningpai_))
+    melded.sort()
+    #刻子と頭は除外する
+    m_pons = []
+    s_pons = []
+    p_pons = []
+    for elem in melded:
+        if elem[0] == elem[2] and len(elem) > 4:
+            if elem[1] == "m":
+                m_pons.append(int(elem[0]))
+            elif elem[1] == "s":
+                s_pons.append(int(elem[0]))
+            elif elem[1] == "p":
+                p_pons.append(int(elem[0]))
+
+    #m_firstsの要素がps両方にあればいい
+    successflag = False
+    for first in m_pons:
+        if first in p_pons and first in s_pons:
+            successflag = True
+    return successflag
 
 
 #ほんいつ
@@ -258,11 +359,11 @@ def yakkucheck_big3dragon(closedhandstr_, exposes_, winningpai_):
     raw = debuff(melded)
     flagnumber = 0
     for elem in raw:
-        if elem == "5z5z5z":
+        if elem.startswith("5z5z5z"):
             flagnumber += 1
-        elif elem == "6z6z6z":
+        elif elem.startswith("6z6z6z"):
             flagnumber += 10
-        elif elem == "7z7z7z":
+        elif elem.startswith("7z7z7z"):
             flagnumber += 100
 
     return flagnumber == 111
@@ -274,13 +375,13 @@ def yakucheck_big4wind(closedhandstr_, exposes_, winningpai_):
     flagnumber = 0
     headnumber = 0
     for elem in raw:
-        if elem == "1z1z1z":
+        if elem.startswith("1z1z1z"):
             flagnumber += 1
-        elif elem == "2z2z2z":
+        elif elem.startswith("2z2z2z"):
             flagnumber += 10
-        elif elem == "3z3z3z":
+        elif elem.startswith("3z3z3z"):
             flagnumber += 100
-        elif elem == "4z4z4z":
+        elif elem.startswith("4z4z4z"):
             flagnumber += 1000
 
     return flagnumber == 1111
@@ -292,13 +393,13 @@ def yakucheck_little4wind(closedhandstr_, exposes_, winningpai_):
     flagnumber = 0
     headnumber = 0
     for elem in raw:
-        if elem == "1z1z1z":
+        if elem.startswith("1z1z1z"):
             flagnumber += 1
-        elif elem == "2z2z2z":
+        elif elem.startswith("2z2z2z"):
             flagnumber += 10
-        elif elem == "3z3z3z":
+        elif elem.startswith("3z3z3z"):
             flagnumber += 100
-        elif elem == "4z4z4z":
+        elif elem.startswith("4z4z4z"):
             flagnumber += 1000
 
     # あたまぶぶん
@@ -317,35 +418,6 @@ def yakucheck_little4wind(closedhandstr_, exposes_, winningpai_):
 
 
 
-# 完成面子 () 副露 {}
-# 完成頭 []
-# 待ち　なし
-# (1m2m3m), (3m4m5m), [2p2p],
-def meld(closedhandstr_, exposes_, winningpai_, tsumo_=True):
-    hands = []
-    for menzu in closedhandstr_:
-        if menzu[0] == "(":
-            hands.append("({0})".format(menzu.strip("()")))
-        elif menzu[0] == "[":
-            hands.append("[{0}]".format(menzu.strip("[]")))
-        else:
-            if len(menzu) == 2:
-                hands.append("[{0}{1}]".format(menzu, winningpai_))
-            elif len(menzu) == 4:
-                # 順子の場合どっちが咲か
-                sample = menzu[0:1]
-                if sample < winningpai_:
-                    inner = "{0}{1}".format(menzu, winningpai_)
-                else:
-                    inner = "{0}{1}".format(winningpai_, menzu)
-                if tsumo_:
-                    hands.append("({0})".format(inner))
-                else:
-                    hands.append("{" + inner + "}")
-
-    hands.extend(exposes_)
-
-    return hands
 
 def debuff(melds_):
     newmeld = []
@@ -638,11 +710,11 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(1z1z1z)", "(3z3z3z)", "2z2z", "[5z5z]", "(4z4z4z)"]
+    hand = ["(1p1p1p)", "(1m2m3m)", "[2z2z]", "9s9s", "(7m8m9m)"]
     naki = []
-    agari = "2z"
+    agari = "9s"
 
-    result = yakucheck_big4wind(hand, naki, agari)
+    result = yakucheck_junchan(hand, naki, agari)
 
     for line in problemfile:
         parts = line.split(" ")
