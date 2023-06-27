@@ -82,12 +82,12 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
 def serialize(closedhandstr_, exposes_, winningpai_):
     serialhand = ""
     for meld in closedhandstr_:
-        serialhand += meld.strip("(){}[]")
+        serialhand += meld.strip("()[]")
     for meld in exposes_:
-        serialhand += meld.strip("()")
+        serialhand += meld.strip("{}")
     serialhand += winningpai_
 
-    return  serialhand
+    return serialhand
 
 # 単独ハイチェック
 def paicheck_simple(haicode_):
@@ -97,7 +97,7 @@ def paicheck_honor(haicode_):
     return haicode_[1] == "z"
 
 def paicheck_terminal(haicode_):
-    return haicode_[0] == "1" or haicode_[0] == "9"
+    return (haicode_[0] == "1" or haicode_[0] == "9") and haicode_[1] != "z"
 
 def paicheck_orphan(haicode_):
     return paicheck_terminal(haicode_) or paicheck_honor(haicode_)
@@ -154,7 +154,7 @@ def yakucheck_3conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
     #()の刻子かカンがあるか
     concealcount = 0
     for mel in melded:
-        if mel.startswith("(") and len(mel) > 4 and mel[0:1] == mel[2:3] and mel[2:3] == mel[3:4]:
+        if mel.startswith("(") and len(mel) > 6 and mel[1] == mel[3] and mel[3] == mel[5]:
             concealcount += 1
 
     return concealcount == 3
@@ -238,7 +238,7 @@ def yakucheck_allhonor(closedhandstr_, exposes_, winningpai_):
     #全て字牌
     serial = serialize(closedhandstr_, exposes_, winningpai_)
     for i in range(int(len(serial)/2)):
-        if not paicheck_honor(serial[i*2:i*2+1]):
+        if not paicheck_honor(serial[i*2:i*2+2]):
             return False
     return True
 
@@ -248,7 +248,7 @@ def yakucheck_allterminal(closedhandstr_, exposes_, winningpai_):
     #全て19 terminal
     serial = serialize(closedhandstr_, exposes_, winningpai_)
     for i in range(int(len(serial)/2)):
-        if not paicheck_terminal(serial[i*2:i*2+1]):
+        if not paicheck_terminal(serial[i*2:i*2+2]):
             return False
     return True
 
@@ -638,11 +638,11 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(2m3m4m)", "(2m3m4m)", "(2s3s4s)", "2p3p", "[1z1z]"]
+    hand = ["(1z1z1z)", "(3z3z3z)", "2z2z", "[5z5z]", "(4z4z4z)"]
     naki = []
-    agari = "1p"
+    agari = "2z"
 
-    result = yakucheck_1peko(hand, naki, agari)
+    result = yakucheck_big4wind(hand, naki, agari)
 
     for line in problemfile:
         parts = line.split(" ")
