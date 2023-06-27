@@ -110,6 +110,8 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     if oneshot_:
         yaku_list.append("One Shot")
 
+    #
+
     # 海底　ホー艇
     if last_:
         if winbyself_:
