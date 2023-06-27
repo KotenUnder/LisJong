@@ -148,15 +148,27 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
 
     # ちゃん田、うんちゃん
     if yakucheck_junchan(closedhandstr_, exposedstrlist_, winningpai_):
-        yaku_list.append("Junchan")
+        if len(exposedstrlist_) > 0:
+            yaku_list.append("Junchan (open)")
+        else:
+            yaku_list.append("Junchan")
     elif yakucheck_chanta(closedhandstr_, exposedstrlist_, winningpai_):
-        yaku_list.append("Chanta")
+        if len(exposedstrlist_) > 0:
+            yaku_list.append("Chanta")
+        else:
+            yaku_list.append("Chanta (open)")
 
     #ほんいつけい
     if yakucheck_semiflush(closedhandstr_, exposedstrlist_, winningpai_):
-        yaku_list.append("Semi-Flush")
+        if len(exposedstrlist_) > 0:
+            yaku_list.append("Semi-Flush")
+        else:
+            yaku_list.append("Semi-Flush (open)")
     elif yakucheck_flush(closedhandstr_, exposedstrlist_, winningpai_):
-        yaku_list.append("Flush")
+        if len(exposedstrlist_) > 0:
+            yaku_list.append("Flush")
+        else:
+            yaku_list.append("Flush (open)")
 
     # 一気通貫
     if yakucheck_straight(closedhandstr_, exposedstrlist_, winningpai_):
@@ -166,7 +178,7 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     if yakucheck_toitoi(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("All Triplets")
 
-    han = 1
+    han = count_han(yaku_list)
 
     point, comment = getpoints(fu, han, is_dealer_, winbyself_)
 
@@ -177,13 +189,40 @@ def count_han(yakulist_):
     handict = {
         "Ready":1,
         "Ready 2":2,
+        "Pure Self-Pick":1,
         "One Shot":1,
         "Last Pick":1,
         "Last Discard":1,
         "1Peko":1,
         "All Simples":1,
+        "Peace":1,
+        "Prevailing Wind":1,
+        "Own Wind":1,
+        "Honor Tile - White":1,
+        "Honor Tile - Green":1,
+        "Honor Tile - Red":1,
+        "Straight":2,
+        "Straight (open)":1,
+        "3 Color Straights":2,
+        "3 Color Straights (open)": 1,
+        "3 Color Triplets":2,
+        "Chanta":2,
+        "Chanta (open)":1,
+        "Junchan":3,
+        "Junchan (open)":2,
         "2Peko":3,
+
+        "Semi-Flush":3,
+        "Semi-Flush (open)":2,
+        "Flush":6,
+        "Flush (open)":5
     }
+
+    han = 0
+    for yaku in yakulist_:
+        han += handict[yaku]
+
+    return han
 
 def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_):
     # 面子の取り方ごとに再起させる
@@ -946,7 +985,7 @@ if __name__ == '__main__':
     naki = []
     agari = "5z"
 
-    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 0, False, False, False, ["1m"])
+    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["1m"])
 
     for line in problemfile:
         parts = line.split(" ")
