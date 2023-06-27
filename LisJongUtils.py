@@ -110,7 +110,9 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     if oneshot_:
         yaku_list.append("One Shot")
 
-    #
+    # 面前自摸
+    if len(exposedstrlist_) == 0 and winbyself_:
+        yaku_list.append("Pure Self-Pick")
 
     # 海底　ホー艇
     if last_:
@@ -140,7 +142,9 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
         yaku_list.append("2Peko")
 
     # 役牌
-
+    yakuhais = yakucheck_yakuhai(closedhandstr_, exposedstrlist_, winningpai_, prevailingwind_, ownwind_)
+    if len(yakuhais) > 0:
+        yaku_list.extend(yakuhais)
 
     # ちゃん田、うんちゃん
     if yakucheck_junchan(closedhandstr_, exposedstrlist_, winningpai_):
@@ -285,6 +289,24 @@ def meld(closedhandstr_, exposes_, winningpai_, tsumo_=True):
 
     return hands
 
+
+def yakucheck_yakuhai(closedhandstr_, exposes_, winningpai_, prevailingwind_, ownwind_):
+    raw = debuff(meld(closedhandstr_, exposes_, winningpai_))
+    yaku_list = []
+    for trip in raw:
+        if len(trip) > 4:
+            if trip[0:2] == prevailingwind_:
+                yaku_list.append("Prevailing Wind")
+            if trip[0:2] == ownwind_:
+                yaku_list.append("Own Wind")
+            if trip[0:2] == "5z":
+                yaku_list.append("Honor Tile - White")
+            if trip[0:2] == "6z":
+                yaku_list.append("Honor Tile - Green")
+            if trip[0:2] == "7z":
+                yaku_list.append("Honor Tile - Red")
+
+    return yaku_list
 
 # 役チェック
 # たんやお
@@ -920,9 +942,9 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(1p2p3p)", "(4p5p6p)", "[2z2z]", "7s8s", "(1s2s3s)"]
+    hand = ["(1p2p3p)", "(4p5p6p)", "5z5z", "(7p8p9p)", "[2m2m]"]
     naki = []
-    agari = "9s"
+    agari = "5z"
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 0, False, False, False, ["1m"])
 
