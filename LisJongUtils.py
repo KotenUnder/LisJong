@@ -92,7 +92,7 @@ def calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_de
     return fu
 
 
-def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_):
+def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_):
 
     #
     yaku_list = []
@@ -120,6 +120,22 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
             yaku_list.append("Last Pick")
         else:
             yaku_list.append("Last Discard")
+
+    # 赤ドラ ０－５の差し替え
+    rdora_count = 0
+    closed2 = []
+    exposed2 = []
+    for trip in closedhandstr_:
+        rdora_count += trip.count("0")
+        closed2.append(trip.replace("0", "5"))
+    for trip in exposedstrlist_:
+        rdora_count += trip.count("0")
+        exposed2.append(trip.replace("0", "5"))
+    rdora_count += winningpai_.count("0")
+
+    closedhandstr_ = closed2
+    exposedstrlist_ = exposed2
+    winningpai_ = winningpai_.replace("0", "5")
 
     # 平和の判定 tsumo20 or ron30
     if len(exposedstrlist_) == 0 and ((winbyself_ and fu == 20) or (not winbyself_ and fu == 30)):
@@ -180,6 +196,30 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
 
     han = count_han(yaku_list)
 
+    # どらを数える
+
+    serial = serialize(closedhandstr_, exposedstrlist_, winningpai_)
+    dora_count = 0
+    udora_count = 0
+    for dora in doras_:
+        for i in range(int(len(serial)/2)):
+            needlepai = serial[i*2:i*2+2]
+            if needlepai == dora:
+                dora_count += 1
+    for dora in u_doras_:
+        for i in range(int(len(serial) / 2)):
+            needlepai = serial[i * 2:i * 2 + 2]
+            if needlepai == dora:
+                udora_count += 1
+
+    han += (dora_count + udora_count)
+    if dora_count > 0:
+        yaku_list.append("Dora {0}".format(dora_count))
+    if udora_count > 0:
+        yaku_list.append("Underneath Dora {0}".format(udora_count))
+    if rdora_count > 0:
+        yaku_list.append("Red Dora {0}".format(rdora_count))
+
     point, comment = getpoints(fu, han, is_dealer_, winbyself_)
 
     return point, comment, yaku_list
@@ -206,6 +246,9 @@ def count_han(yakulist_):
         "3 Color Straights":2,
         "3 Color Straights (open)": 1,
         "3 Color Triplets":2,
+        "3 Concealed Triplets":2,
+        "3 Quads":2,
+        "Mixed Terminals":2,
         "Chanta":2,
         "Chanta (open)":1,
         "Junchan":3,
@@ -981,11 +1024,11 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(1p2p3p)", "(4p5p6p)", "5z5z", "(7p8p9p)", "[2m2m]"]
+    hand = ["(1p2p3p)", "(4p0p6p)", "5z5z", "(7p8p9p)", "[2m2m]"]
     naki = []
     agari = "5z"
 
-    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["1m"])
+    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5p"], [])
 
     for line in problemfile:
         parts = line.split(" ")
