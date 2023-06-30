@@ -19,6 +19,23 @@ SCORETABE_CHILD = [
     [[(600, 1200), (1200, 2300), (2000, 4000), (2000, 4000)], [2300, 4500, 8000, 8000]]
 ]
 
+# 確定頭、確定メンツ、頭候補、面子候補
+TABLE_CANDIDATOR_COMBINATION = [
+    [[0,0,0,0]],
+    [[0,0,1,0]],
+    [[1,0,0,0], [0,0,0,1]],
+    [[0,1,0,0]],
+    [[1,0,0,1], [0,1,1,0]],
+    [[1,1,0,0], [0,1,0,1]],
+    [[0,2,0,0]],
+    [[1,1,0,1], [0,2,1,0]],
+    [[1,2,0,0], [0,2,0,1]],
+    [[0,3,0,0]],
+    [[1, 2, 0, 1], [0, 3, 1, 0]],
+    [[1, 3, 0, 0], [0, 3, 0, 1]],
+    [[0, 4, 0, 0]],
+    [[1,3,0,1], [0,4,1,0]]
+]
 
 meldstable = {}
 meldsfile = open("MeldsTable.txt", "r")
@@ -97,9 +114,6 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     #
     yaku_list = []
 
-    # ふけいさん
-    fu = calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_)
-
     # 立直していたら追加
     if riichi_ == 1:
         yaku_list.append("Ready")
@@ -137,6 +151,9 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     exposedstrlist_ = exposed2
     winningpai_ = winningpai_.replace("0", "5")
 
+    # ふけいさん
+    fu = calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_)
+
     # 平和の判定 tsumo20 or ron30
     if len(exposedstrlist_) == 0 and ((winbyself_ and fu == 20) or (not winbyself_ and fu == 30)):
         yaku_list.append("Peace")
@@ -147,9 +164,16 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
 
     # 3色の判定
     if yakucheck_3color_chow(closedhandstr_, exposedstrlist_, winningpai_):
-        yaku_list.append("3 Color Straights")
+        if len(exposedstrlist_) == 0:
+            yaku_list.append("3 Color Straights")
+        else:
+            yaku_list.append("3 Color Straights (open)")
     if yakucheck_3color_pong(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("3 Color Triplets")
+
+    #3かん
+    if yakucheck_3quads(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("3 Quads")
 
     # 1peko, 2peko
     if yakucheck_1peko(closedhandstr_, exposedstrlist_, winningpai_):
@@ -212,7 +236,7 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
             if needlepai == dora:
                 udora_count += 1
 
-    han += (dora_count + udora_count)
+    han += (dora_count + udora_count + rdora_count)
     if dora_count > 0:
         yaku_list.append("Dora {0}".format(dora_count))
     if udora_count > 0:
@@ -587,6 +611,27 @@ def yakucheck_3color_pong(closedhandstr_, exposes_, winningpai_):
     return successflag
 
 
+def yakucheck_3quads(closedhandstr_, exposes_, winningpai_):
+    raw = debuff(meld(closedhandstr_, exposes_, winningpai_))
+
+    quads_count = 0
+    for trip in raw:
+        if len(trip) == 10:
+            quads_count += 1
+
+    return quads_count == 3
+
+
+def yakucheck_4quads(closedhandstr_, exposes_, winningpai_):
+    raw = debuff(meld(closedhandstr_, exposes_, winningpai_))
+
+    quads_count = 0
+    for trip in raw:
+        if len(trip) == 10:
+            quads_count += 1
+
+    return quads_count == 4
+
 #ほんいつ
 def yakucheck_semiflush(closedhandstr_, exposes_, winningpai_):
     #字牌1異常と崇拝一種類
@@ -958,7 +1003,7 @@ def arrange_tile(handstr_):
         index += int(tilecode[0])
         # 赤なら5扱い
         if tilecode[0] == "0":
-            index += 5
+            index += 4.5
 
         if tilecode[1] == "p":
             index += 10
@@ -979,43 +1024,143 @@ def arrange_tile(handstr_):
 
 
 def machi(handstr_, exposes_):
+    # 手の長さチェック
+    closed_len = int(len(handstr_) / 2)
+    if closed_len + len(exposes_) * 3 != 13:
+        raise Exception
+
+    # 赤はいの保存
+    redm_flag = False
+    redp_flag = False
+    reds_flag = False
+    if "0m" in handstr_:
+        redm_flag = True
+    if "0p" in handstr_:
+        redp_flag = True
+    if "0s" in handstr_:
+        reds_flag = True
+
     # handstrの理牌
     handstr_ = arrange_tile(handstr_.replace('0', '5'))
     # 要求される面子数　exposeの数だけ減る
     required_melds = 4 - len(exposes_)
 
-    # mpszに分ける
-    colorlist = ["", "", "", ""]
-    identifier = {"m":0, "p":1, "s":2, "z":3}
+    # 3面子１頭と４面子頭待ちとに分ける
+    serial = "".join(handstr_)
 
-    for i in range(int(len(handstr_) / 2)):
-        colorlist[identifier[handstr_[i*2+1]]] += handstr_[i*2:i*2+2]
+    # 4面子頭待ちとして考える
 
-    # 面子候補などの数をいれる
-    candidator_combination = []
-    for i in range(4):
-        #candidator_combination.append(
-         #   TABLE_CANDIDATOR_COMBINATION[int(len(colorlist[i]) / 2)])
-        pass
+    def mentsu_eater(rest_):
 
-    # 各部分について構成候補を出す
-    def innersearch(comlete_, candidator_, rest_):
-        pass
+        # 頭１つに確定したらそれを返す
+        if len(rest_) == 2:
+            return [[rest_]]
 
-    concrete_candidatelist = []
-    for i in range(4):
-        #concrete_candidatelist.append(innersearch([], candidator_combination[i], colorlist[i]))
-        pass
+        # 頭の古紙で考える
 
-    print()
+        thislevel = []
+        nextrestlist = []
+
+        # 基準はいは全て
+        found_flag = False
+        for pai in TILE_TABLE:
+
+            # 順子チェック
+            if not paicheck_honor(pai) and int(pai[0]) < 8:
+                nextpai = paicode_next(pai)
+                nextnext = paicode_next(nextpai)
+                # 全てある場合は取り出す
+                if pai in rest_ and nextpai in rest_ and nextnext in rest_:
+                    # 取り出した結果　余りが1つだけなら成功
+                    nextrestlist.append(remove_from_hand(rest_, [pai, nextpai, nextnext]))
+                    thislevel.append("({0}{1}{2})".format(pai, nextpai, nextnext))
+                    found_flag = True
+
+            # 刻子チェック
+            pong = pai + pai + pai
+            if pong in rest_:
+                pongstart = rest_.index(pong)
+                newrest = rest_[0:pongstart] + rest_[pongstart+6:]
+                nextrestlist.append(newrest)
+                thislevel.append("({0})".format(pong))
+                found_flag = True
+
+            # 同じグループ内で発見済みなら終了
+            if found_flag and pai[0] == "9":
+                break
 
 
 
+        answer_list = []
+
+        for i in range(len(nextrestlist)):
+            inner = mentsu_eater(nextrestlist[i])
+
+            for inn in inner:
+                inn.append(thislevel[i])
+                answer_list.append(inn)
+
+        return answer_list
+
+    sampler = mentsu_eater(serial)
+
+    # それぞれsortして、完全一致しているものがあれば削除する
+    for sample in sampler:
+        sample.sort()
+
+    deleteist = []
+    for i in range(len(sampler)):
+        for j in range(i + 1, len(sampler)):
+            sameflag = True
+            for k in range(len(sampler[i])):
+                if sampler[i][k] != sampler[j][k]:
+                    sameflag = False
+                    break
+            if sameflag:
+                deleteist.append(j)
+
+    newsampler = []
+
+    for i in range(len(sampler)):
+        if not i in deleteist:
+            newsampler.append(sampler[i])
+
+    return newsampler
+
+
+
+def remove_from_hand(handstr_, removelist_):
+    ids = [-2]
+    for rm in removelist_:
+        ids.append(handstr_.index(rm))
+
+    result = ""
+    for i in range(len(ids) - 1):
+        result += handstr_[ids[i]+2:ids[i+1]]
+    result += handstr_[ids[len(ids)-1]+2:]
+
+    return result
+
+
+TILE_TABLE = ["1m","2m","3m","4m","5m", "6m","7m","8m","9m",
+                    "1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p",
+                    "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s",
+                    "1z", "2z", "3z", "4z", "5z", "6z", "7z"]
+
+DORA_TABLE = ["2m","3m","4m","5m", "6m","7m","8m","9m", "1m",
+                    "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p", "1p"
+                    "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "1s"
+                    "2z", "3z", "4z", "1z", "6z", "7z", "5z"]
+
+
+def paicode_next(paicode_):
+    return TILE_TABLE[TILE_TABLE.index(paicode_) + 1]
 
 
 if __name__ == '__main__':
 
-    #machi("9m9m9m4p0p6p9p9p4s5s5s6s6s", [])
+    machi("1p2p3p4p0p6p7p4s5s5s6s6s7s", [])
+
 
     tile_table = ["1m","2m","3m","4m","5m", "6m","7m","8m","9m",
                     "1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p",
@@ -1024,11 +1169,13 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(1p2p3p)", "(4p0p6p)", "5z5z", "(7p8p9p)", "[2m2m]"]
+    #machi("1m2m3m5m6m2p2p5p5p5p1z1z1z", [])
+
+    hand = ["(1p2p3p)", "(4p0p6p)", "5z5z", "(6p7p8p)", "[2m2m]"]
     naki = []
     agari = "5z"
 
-    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5p"], [])
+    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
     for line in problemfile:
         parts = line.split(" ")
