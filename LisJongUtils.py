@@ -42,7 +42,7 @@ meldsfile = open("MeldsTable.txt", "r")
 meldsfile.readline()
 for line in meldsfile:
     parts = line.split("\t")
-    meldstable[parts[0]] = int(parts[1].strip())
+    meldstable[parts[0]] = parts[1].strip()
 
 
 def calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_):
@@ -1201,7 +1201,6 @@ def machi(handstr_, exposes_):
             newsampler.append(sampler[i])
 
     #副露部分の追加
-    #TODO
     for i in range(len(newsampler)):
         newsampler[i].extend(exposes_)
 
@@ -1264,17 +1263,7 @@ def paicode_prev(paicode_):
 
 if __name__ == '__main__':
 
-    machi("1p2p3p4p0p6p8s8s8s2m2m2m3m", [])
-
-
-    tile_table = ["1m","2m","3m","4m","5m", "6m","7m","8m","9m",
-                    "1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p",
-                    "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s",
-                    "1z", "2z", "3z", "4z", "5z", "6z", "7z"]
-
     problemfile = open("p_normal_10000.txt")
-
-    #machi("1m2m3m5m6m2p2p5p5p5p1z1z1z", [])
 
     hand = ["(1p2p3p)", "(4p0p6p)", "5z5z", "(6p7p8p)", "[2m2m]"]
     naki = []
@@ -1286,6 +1275,6 @@ if __name__ == '__main__':
         parts = line.split(" ")
         hand = ""
         for i in range(14):
-            hand += tile_table[int(parts[i])]
+            hand += TILE_TABLE[int(parts[i])]
 
         score = shanten(hand)

@@ -15,10 +15,6 @@ TILE_TOTAL = 4 * (9+9+9+7)
 PLAYER_COUNT = 4
 POSITION_DORA = TILE_TOTAL - 5
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
 
 class Janshi():
     def __init__(self, name_, initial_score_=25000):
@@ -179,6 +175,7 @@ class Table():
 
         #dora
         self.dora = []
+        self.underneath_dora = []
         self.dora.append(self.pile[POSITION_DORA])
 
         self.next_tsumo_id = 48
