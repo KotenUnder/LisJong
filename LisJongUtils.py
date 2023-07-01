@@ -1121,7 +1121,9 @@ def machi(handstr_, exposes_):
                     return [[rest_]]
                 elif rest_[1] != "z" and rest_[3] != "z" and paicode_next(rest_[0:2]) == rest_[2:4]:
                     return [[rest_]]
-
+                elif rest_[1] != "z" and rest_[3] != "z" and paicode_next(paicode_next(rest_[0:2])) == rest_[2:4]:
+                    return [[rest_]]
+                
             thislevel = []
             nextrestlist = []
 
@@ -1175,6 +1177,8 @@ def machi(handstr_, exposes_):
     waiting_mentsu = head_eater(serial)
     sampler = mentsu_eater(serial)
 
+    sampler.extend(waiting_mentsu)
+
     # それぞれsortして、完全一致しているものがあれば削除する
     for sample in sampler:
         sample.sort()
@@ -1195,6 +1199,33 @@ def machi(handstr_, exposes_):
     for i in range(len(sampler)):
         if not i in deleteist:
             newsampler.append(sampler[i])
+
+    #副露部分の追加
+    #TODO
+    for i in range(len(newsampler)):
+        newsampler[i].extend(exposes_)
+
+    # 具体的な待ち牌を付け加える
+    result = []
+    for i in range(len(newsampler)):
+        for j in range(len(newsampler[i])):
+            if not newsampler[i][j][0] in "{[(":
+                if len(newsampler[i][j]) == 2:
+                    waits = [newsampler[i][j]]
+                elif newsampler[i][j][0:2] == newsampler[i][j][2:4]:
+                    waits = [newsampler[i][j][0:2]]
+                #数は胃連続
+                elif paicode_next(newsampler[i][j][0:2]) == newsampler[i][j][2:4]:
+                    waits = []
+                    #両面
+                    if paicheck_simple(newsampler[i][j][0:2]):
+                        waits.append(paicode_prev(newsampler[i][j][0:2]))
+                    if paicheck_simple(newsampler[i][j][2:4]):
+                        waits.append(paicode_next(newsampler[i][j][2:4]))
+                elif paicode_next(paicode_next(newsampler[i][j][0:2])) == newsampler[i][j][2:4]:
+                    waits = [paicode_next(newsampler[i][j][0:2])]
+
+        result.append((newsampler[i], waits))
 
     return newsampler
 
@@ -1226,6 +1257,9 @@ DORA_TABLE = ["2m","3m","4m","5m", "6m","7m","8m","9m", "1m",
 
 def paicode_next(paicode_):
     return TILE_TABLE[TILE_TABLE.index(paicode_) + 1]
+
+def paicode_prev(paicode_):
+    return TILE_TABLE[TILE_TABLE.index(paicode_) - 1]
 
 
 if __name__ == '__main__':
