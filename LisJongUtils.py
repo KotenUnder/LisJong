@@ -1102,6 +1102,77 @@ def machi(handstr_, exposes_):
 
         return answer_list
 
+    # 面子候補待ちと考える方式
+    def head_eater(rest_):
+        # 頭待ちではないので、頭を一つ仮定して回していく
+        head_candidate_list = []
+        restlist = []
+        for eye in TILE_TABLE:
+            if (eye + eye) in rest_:
+                head_candidate_list.append("[{0}{1}]".format(eye, eye))
+                eyeid = rest_.index(eye)
+                newrest = rest_[0:eyeid] + rest_[eyeid+4:]
+                restlist.append(newrest)
+
+        def mentsu_waitor(rest_):
+            #残り2で、同じか連続なら返す
+            if len(rest_) <= 4:
+                if rest_[0:2] == rest_[2:4]:
+                    return [[rest_]]
+                elif rest_[1] != "z" and rest_[3] != "z" and paicode_next(rest_[0:2]) == rest_[2:4]:
+                    return [[rest_]]
+
+            thislevel = []
+            nextrestlist = []
+
+            found_flag = False
+            for pai in TILE_TABLE:
+
+                # 順子チェック
+                if not paicheck_honor(pai) and int(pai[0]) < 8:
+                    nextpai = paicode_next(pai)
+                    nextnext = paicode_next(nextpai)
+                    # 全てある場合は取り出す
+                    if pai in rest_ and nextpai in rest_ and nextnext in rest_:
+                        # 取り出した結果　余りが1つだけなら成功
+                        nextrestlist.append(remove_from_hand(rest_, [pai, nextpai, nextnext]))
+                        thislevel.append("({0}{1}{2})".format(pai, nextpai, nextnext))
+                        found_flag = True
+
+                # 刻子チェック
+                pong = pai + pai + pai
+                if pong in rest_:
+                    pongstart = rest_.index(pong)
+                    newrest = rest_[0:pongstart] + rest_[pongstart+6:]
+                    nextrestlist.append(newrest)
+                    thislevel.append("({0})".format(pong))
+                    found_flag = True
+
+                # 同じグループ内で発見済みなら終了
+                if found_flag and pai[0] == "9":
+                    break
+
+            answer_list = []
+
+            for i in range(len(nextrestlist)):
+                inner = mentsu_waitor(nextrestlist[i])
+
+                for inn in inner:
+                    inn.append(thislevel[i])
+                    answer_list.append(inn)
+
+            return answer_list
+
+        answer_list = []
+        for i in range(len(head_candidate_list)):
+            waitor = mentsu_waitor(restlist[i])
+            for waiting in waitor:
+                waiting.append(head_candidate_list[i])
+                answer_list.append(waiting)
+
+        return answer_list
+
+    waiting_mentsu = head_eater(serial)
     sampler = mentsu_eater(serial)
 
     # それぞれsortして、完全一致しているものがあれば削除する
@@ -1159,7 +1230,7 @@ def paicode_next(paicode_):
 
 if __name__ == '__main__':
 
-    machi("1p2p3p4p0p6p7p4s5s5s6s6s7s", [])
+    machi("1p2p3p4p0p6p8s8s8s2m2m2m3m", [])
 
 
     tile_table = ["1m","2m","3m","4m","5m", "6m","7m","8m","9m",
