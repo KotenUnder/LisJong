@@ -775,6 +775,42 @@ def yakucheck_little4wind(closedhandstr_, exposes_, winningpai_):
     return flagnumber in [1113, 1131, 1311, 3111]
 
 
+#厨連邦党　数字で返す 2なら純正
+def yakucheck_ninegates(closedhandstr_, exposes_, winningpai_):
+    # 一色かつ全部で1-3 9-3
+    if len(exposes_) > 0:
+        return False
+
+    if not yakucheck_flush(closedhandstr_, exposes_, winningpai_):
+        return False
+
+    gates = [0] * 9
+    serial = serialize(closedhandstr_, exposes_, winningpai_)
+    for i in range(int(len(serial)/2)):
+        gates[int(serial[i*2])-1] += 1
+
+    #特定のやつをひくと、1つだけ1になっていればいい
+    gates[0] -= 3
+    gates[8] -= 3
+    for i in range(1, 8):
+        gates[i] -= 1
+    zeros = 0
+    ones = 0
+    one_index = -1
+    for i in range(9):
+        if gates[i] == 0:
+            zeros += 1
+        elif gates[i] == 1:
+            ones += 1
+            one_index = i
+
+    if zeros == 8 and ones == 1:
+        if int(winningpai_[0]) == one_index + 1:
+            return 2
+        else:
+            return 1
+    else:
+        return 0
 
 
 
@@ -1226,7 +1262,10 @@ def machi(handstr_, exposes_):
 
         result.append((newsampler[i], waits))
 
-    return newsampler
+    #赤があれば元に戻す
+
+
+    return result
 
 
 
@@ -1268,6 +1307,9 @@ if __name__ == '__main__':
     hand = ["(1p2p3p)", "(4p0p6p)", "5z5z", "(6p7p8p)", "[2m2m]"]
     naki = []
     agari = "5z"
+
+    hand = "1m1m1m2m3m4m5m6m7m8m9m9m9m"
+    result = machi(hand, naki)
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 

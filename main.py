@@ -21,6 +21,7 @@ class Janshi():
         self.name = name_
         self.score = initial_score_
         self.hand = []
+        self.exposes = []
         self.river = []
 
 
@@ -29,7 +30,7 @@ class Janshi():
             self.hand.append(initial13str_[i*2:i*2+2])
 
     # キル杯を返す
-    def draw(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
+    def draw(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         discard_tile, tsumogiri_flag = self.engine_discard(draw_pai_, riichi_, tsumo_, kong_)
         if not tsumogiri_flag:
             if discard_tile in self.hand:
@@ -75,14 +76,14 @@ class Janshi():
 
 class Human(Janshi):
 
-    def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
+    def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         # 自分の手配を表示
         self.sort_hand()
         # 選択し表示
         line = "".join(self.hand) + "," + draw_pai_
         # リーチ可能なら表示
-        if riichi_:
-            line += ",riichi"
+        if len(riichi_) > 0:
+            line += ",riichi({0})".format(",".join(riichi_))
         if tsumo_:
             line += ",Tsumo"
         if len(kong_) > 0:
@@ -136,18 +137,34 @@ class LisJongServer():
                             "クライアント{}:{}から{}を受信".format(value[1][0], value[1][1], res.decode()).encode("UTF-8"))
                         pass
             except Exception as e:
-                print(e);
-                break;
+                print(e)
+                break
+
 
 class Table():
 
     def __init__(self):
-    # 現在の局数
+        # 現在の場
         self.round = 1
+        # 現在の局数
         self.game = 1
+        # 現在の本場
         self.extra = 0
 
 
+    def start_match(self, pnames_, settings_):
+        self.players = []
+        for i in range(4):
+            self.players.append(pnames_[i])
+
+        # 半荘か東風戦か、
+        self.round_max = 2
+
+        # 点数設計
+        initial_score = 25000
+
+        # 初期化
+        self.deposit = 0
 
     def start_game(self):
         # 名前設定
@@ -190,7 +207,22 @@ class Table():
             fullhand = self.players[turnplayer].hand + [drawtile_id]
             # shantenへいれる
             shanten_triple = LisJongUtils.shanten("".join(fullhand).replace('0', '5'))
-            self.players[turnplayer].draw(drawtile_id, shanten_triple[0] < 1, shanten_triple[0] < 0)
+            # shanten=0なら立直宣言はいも教える
+            fullhand_copy = []
+            riichi_list = []
+            if 0 in shanten_triple or -1 in shanten_triple:
+                for tile in fullhand:
+                    fullhand_copy.append(tile)
+                # 手札の1種類ずつを外してみて、待ちが発生すればそれに従う
+                for tile in fullhand_copy:
+                    fullhand_copy.remove(tile)
+                    machiresult = LisJongUtils.machi("".join(fullhand_copy), [])
+                    if len(machiresult) > 0:
+                        riichi_list.append(tile)
+                    fullhand_copy.append(tile)
+
+            self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
+
 
             self.next_tsumo_id += 1
             turnplayer = (turnplayer + 1) % 4
@@ -244,7 +276,6 @@ class Table():
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
     taku = Table()
     tilepile, hash = taku.create_tilepile()
     print(tilepile)

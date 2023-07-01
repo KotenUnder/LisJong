@@ -26,3 +26,14 @@ BYE
 ```commandline
 START-MATCH player1=雀士1,player2=雀士2,player3=雀士3,payer4=雀士4
 ```
+- これを受け取った各クライアントは、サーバー基準で10秒以内に返答する必要がある。
+```commandline
+OK
+```
+
+## 局の開始
+
+- 一局の始まりはサーバーから送信される
+- ```START-GAME ```
+
+```
