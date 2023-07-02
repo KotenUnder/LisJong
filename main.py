@@ -92,10 +92,25 @@ class Human(Janshi):
         print(line)
 
         tilecode = input()
+
+        if tilecode == "Tsumo":
+            waits = LisJongUtils.machi("".join(self.hand), [])
+            # 当たっているものを
+            for wait in waits:
+                if draw_pai_ in wait[1]:
+                    # 当たっていればそれから点数計算
+                    agari = LisJongUtils.calculate_score_one(wait[0], [], draw_pai_,
+                                                             True, True, "1z", "1z", True, False, False, False,
+                                                             ["3m"], ["4m"])
+                    print(agari)
+
+
         if tilecode == draw_pai_:
             return draw_pai_, True
         else:
             return tilecode, False
+
+
 
 class LisJongServer():
     def __init__(self):
@@ -214,16 +229,15 @@ class Table():
                 for tile in fullhand:
                     fullhand_copy.append(tile)
                 # 手札の1種類ずつを外してみて、待ちが発生すればそれに従う
-                for tile in fullhand_copy:
-                    fullhand_copy.remove(tile)
-                    machiresult = LisJongUtils.machi("".join(fullhand_copy), [])
-                    if len(machiresult) > 0:
-                        riichi_list.append(tile)
-                    fullhand_copy.append(tile)
+                for tile in fullhand:
+                    if not tile in riichi_list:
+                        fullhand_copy.remove(tile)
+                        machiresult = LisJongUtils.machi("".join(fullhand_copy), [])
+                        if len(machiresult) > 0:
+                            riichi_list.append(tile)
+                        fullhand_copy.append(tile)
 
             self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
-
-
             self.next_tsumo_id += 1
             turnplayer = (turnplayer + 1) % 4
 
