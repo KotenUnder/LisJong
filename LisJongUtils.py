@@ -972,6 +972,7 @@ def encode_tilescape(tileliststr_):
 
     return encode
 
+
 def disintegrate_code(colorcode_):
     # 孤立杯を分解する
     colorcode_.strip('0')
@@ -985,6 +986,7 @@ def disintegrate_code(colorcode_):
     blocks = [s for s in blocks if s != "1" and len(s) > 0]
 
     return blocks
+
 
 def optimize_melds(m_code, p_code, s_code, h_code):
     # それぞれでblocksを作って合体させる
@@ -1267,6 +1269,60 @@ def machi(handstr_, exposes_):
 
     return result
 
+
+def tileid_from_str(tileidstr_):
+    index = 0
+    index += int(tileidstr_[0])
+    # 赤なら5扱い
+    if tileidstr_[0] == "0":
+        index += 4.5
+
+    if tileidstr_[1] == "p":
+        index += 10
+    elif tileidstr_[1] == "s":
+        index += 20
+    elif tileidstr_[1] == "z":
+        index += 30
+
+    return index
+
+
+def check_call(handstr_, discarded_):
+    #listに変換
+    discarded_ = discarded_.replace("0", "5")
+    handstr_black = handstr_.replace("0", "5")
+    handlist = []
+    for i in range(int(len(handstr_black)/2)):
+        handlist.append(handstr_black[i*2:i*2+2])
+    handlist.sort(key=tileid_from_str)
+
+    result = {
+        "pon":[],
+        "kan":[],
+        "chi":[]
+    }
+
+    #チーは、前2があればいい
+    if not paicheck_honor(discarded_):
+        #かんちゃんけい
+        if int(discarded_[0]) >= 2 and int(discarded_[0]) <= 8:
+            if paicode_prev(discarded_) in handlist and paicode_next(discarded_) in handlist:
+                result["chi"].append([paicode_prev(discarded_), paicode_next(discarded_)])
+        if int(discarded_[0]) >= 3:
+            if paicode_prev(discarded_) in handlist and paicode_prev(paicode_prev(discarded_)) in handlist:
+                result["chi"].append([paicode_prev(discarded_), paicode_prev(paicode_prev(discarded_))])
+        if int(discarded_[0]) <= 7:
+            if paicode_next(discarded_) in handlist and paicode_next(paicode_next(discarded_)) in handlist:
+                result["chi"].append([paicode_next(discarded_), paicode_next(paicode_next(discarded_))])
+
+    #ポンのチェック
+    if handlist.count(discarded_) >= 2:
+        result["pon"].append([discarded_, discarded_])
+
+    if handlist.count(discarded_) >= 3:
+        result["kan"].append([discarded_, discarded_, discarded_])
+
+    return result
 
 
 def remove_from_hand(handstr_, removelist_):
