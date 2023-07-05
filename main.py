@@ -21,8 +21,8 @@ class Janshi():
         self.name = name_
         self.score = initial_score_
         self.hand = []
-        self.exposes = []
-        self.river = []
+        self.exposes = [[],[],[],[]]
+        self.ponds = [[],[],[],[]]
 
 
     def initial_draw(self, initial13str_):
@@ -37,7 +37,11 @@ class Janshi():
                 discard_id = self.hand.index(discard_tile)
                 self.hand[discard_id] = draw_pai_
 
-        return discard_tile, tsumogiri_flag
+        return "Discard", discard_tile, tsumogiri_flag
+
+
+    def others_discard(self, pid_, discarded_, tsumogiri_=False, riichi_=False):
+        self.ponds[pid_ % 4].append((discarded_, tsumogiri_, riichi_))
 
     def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
         return draw_pai_, True
@@ -73,6 +77,22 @@ class Janshi():
 
 
 
+class KoritsuChu(Janshi):
+    def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
+        self.sort_hand()
+        # 背理を使って最善を出す
+        hairi = LisJongUtils.logic_tile("".join(self.hand)+draw_pai_)
+        maxuke = 0
+        maxri = ""
+        for ri in hairi:
+            if hairi[ri] > maxuke:
+                maxri = ri
+                maxuke = hairi[ri]
+
+        print("".join(self.hand) + "," + draw_pai_)
+        print("Discard {0}".format(maxri))
+
+        return maxri, False
 
 class Human(Janshi):
 
@@ -183,7 +203,7 @@ class Table():
 
     def start_game(self):
         # 名前設定
-        self.players = [Human("keyboard"), Janshi("1"), Janshi("2"), Janshi("3")]
+        self.players = [Human("keyboard"), KoritsuChu("1"), KoritsuChu("2"), KoritsuChu("3")]
 
         # 灰山生成
         tilepilestr, hashstr = self.create_tilepile()
@@ -209,6 +229,10 @@ class Table():
         self.dora = []
         self.underneath_dora = []
         self.dora.append(self.pile[POSITION_DORA])
+
+        #doraを通知する
+        #for p in range(PLAYER_COUNT):
+        #    self.players[p].
 
         self.next_tsumo_id = 48
         self.kong_count = 0
@@ -237,7 +261,18 @@ class Table():
                             riichi_list.append(tile)
                         fullhand_copy.append(tile)
 
-            self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
+            tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
+            # 0commnad, 1hai, 2tsumogiriflag
+            if tsumo_result[0] == "Discard":
+                # 全員に巣手配通知
+                for p in range(4):
+                    self.players[p].others_discard((p + turnplayer) % 4, tsumo_result[1])
+                pass
+            elif tsumo_result[0] == "Riich":
+                pass
+            elif tsumo_result[0] == "Kong":
+                pass
+
             self.next_tsumo_id += 1
             turnplayer = (turnplayer + 1) % 4
 
