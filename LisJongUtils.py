@@ -1380,7 +1380,7 @@ def logic_tile(handstr_, known_tiles={}):
 
         for tsumo in TILE_TABLE:
             # 新しい手配リストを作って、そのシャンテン数と有効杯の枚数を求める
-            if handlist.count(tsumo) > 4:
+            if handlist.count(tsumo) >= 4:
                 continue
 
             temphand = [tsumo]
@@ -1433,11 +1433,12 @@ if __name__ == '__main__':
     naki = []
     agari = "5z"
 
-    hand = "7m7m7m9m9m3p4p0p1s1s4s4s4s"
+    hand = "7m7m7m7m9m3p4p0p1s1s4s4s4s7s"
 
-    result = machi(hand, [])
+    result = logic_tile(hand)
 
     result = calculate_score_one(result[1][0], naki, "9m", True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
+
 
     for line in problemfile:
         parts = line.split(" ")

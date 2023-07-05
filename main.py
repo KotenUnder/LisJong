@@ -31,7 +31,7 @@ class Janshi():
 
     # キル杯を返す
     def draw(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
-        discard_tile, tsumogiri_flag = self.engine_discard(draw_pai_, riichi_, tsumo_, kong_)
+        command, discard_tile, tsumogiri_flag = self.engine_discard(draw_pai_, riichi_, tsumo_, kong_)
         if not tsumogiri_flag:
             if discard_tile in self.hand:
                 discard_id = self.hand.index(discard_tile)
@@ -44,7 +44,7 @@ class Janshi():
         self.ponds[pid_ % 4].append((discarded_, tsumogiri_, riichi_))
 
     def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
-        return draw_pai_, True
+        return draw_pai_, riichi_, True
 
     def engine_chow(self):
 
@@ -79,6 +79,16 @@ class Janshi():
 
 class KoritsuChu(Janshi):
     def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
+        # ツモ可能であれば、すぐにあがる
+        if tsumo_:
+            return "Tsumo", False, False
+
+        # 立直可能であれば立直する
+        if riichi_:
+            command = "Riichi"
+        else:
+            command = "Discard"
+
         self.sort_hand()
         # 背理を使って最善を出す
         hairi = LisJongUtils.logic_tile("".join(self.hand)+draw_pai_)
@@ -91,8 +101,8 @@ class KoritsuChu(Janshi):
 
         print("".join(self.hand) + "," + draw_pai_)
         print("Discard {0}".format(maxri))
+        return command, maxri, True
 
-        return maxri, False
 
 class Human(Janshi):
 
@@ -123,12 +133,18 @@ class Human(Janshi):
                                                              True, True, "1z", "1z", True, False, False, False,
                                                              ["3m"], ["4m"])
                     print(agari)
+            return "Tsumo", False, False
 
-
-        if tilecode == draw_pai_:
-            return draw_pai_, True
+        # 立直可能であれば立直する
+        if riichi_:
+            command = "Riichi"
         else:
-            return tilecode, False
+            command = "Discard"
+
+        if tilecode != draw_pai_:
+            return command, tilecode, False
+        else:
+            return command, tilecode, True
 
 
 
