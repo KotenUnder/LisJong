@@ -85,7 +85,7 @@ class KoritsuChu(Janshi):
         maxuke = 0
         maxri = ""
         for ri in hairi:
-            if hairi[ri] > maxuke:
+            if hairi[ri] >= maxuke:
                 maxri = ri
                 maxuke = hairi[ri]
 

@@ -171,6 +171,10 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     if yakucheck_3color_pong(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("3 Color Triplets")
 
+    # 3 anko
+    if yakucheck_3conceal(closedhandstr_, exposedstrlist_, winningpai_, winbyself_):
+        yaku_list.append("3 Concealed Triplets")
+
     #3かん
     if yakucheck_3quads(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("3 Quads")
@@ -1376,6 +1380,9 @@ def logic_tile(handstr_, known_tiles={}):
 
         for tsumo in TILE_TABLE:
             # 新しい手配リストを作って、そのシャンテン数と有効杯の枚数を求める
+            if handlist.count(tsumo) > 4:
+                continue
+
             temphand = [tsumo]
             for j in range(len(handlist)):
                 if i != j:
@@ -1426,10 +1433,11 @@ if __name__ == '__main__':
     naki = []
     agari = "5z"
 
-    hand = "2m3m7m8m1p4p5p6p3s9s1z7z7z7p"
-    result = logic_tile(hand)
+    hand = "7m7m7m9m9m3p4p0p1s1s4s4s4s"
 
-    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
+    result = machi(hand, [])
+
+    result = calculate_score_one(result[1][0], naki, "9m", True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
     for line in problemfile:
         parts = line.split(" ")
