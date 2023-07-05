@@ -295,7 +295,7 @@ def count_han(yakulist_):
 
     return han
 
-def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_):
+def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_):
     # 面子の取り方ごとに再起させる
     # 特殊形式だけ先に計算する。
     # 国士と考えてチェック
@@ -336,11 +336,17 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
             points = getpoints("Limit2", "Limit2", is_dealer_, winbyself_)
             yaku_list = ["13 Orphans - 13 wait"]
 
-    pass
-
-
     # lrgal check
+    # 暫定措置として、最初にヒットした待ちだけ
+    machiform = machi(closedhandstr_, exposedstrlist_)
+    for waits in machiform:
+        if winningpai_ in waits[1]:
+            # 結果表示
+            result = calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_,
+                                         winbyself_, is_dealer_, prevailingwind_, ownwind_,
+                                         riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_)
 
+            return result
 
     # 七トイツと考えて調べる
 

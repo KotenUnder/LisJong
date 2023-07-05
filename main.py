@@ -37,7 +37,7 @@ class Janshi():
                 discard_id = self.hand.index(discard_tile)
                 self.hand[discard_id] = draw_pai_
 
-        return "Discard", discard_tile, tsumogiri_flag
+        return command, discard_tile, tsumogiri_flag
 
 
     def others_discard(self, pid_, discarded_, tsumogiri_=False, riichi_=False):
@@ -288,6 +288,14 @@ class Table():
                 pass
             elif tsumo_result[0] == "Kong":
                 pass
+            elif tsumo_result[0] == "Tsumo":
+                # 点数計算した結果を表示する
+                result = LisJongUtils.calculate_score("".join(self.players[turnplayer].hand),
+                                             self.players[turnplayer].exposes,
+                                             drawtile_id, True, False, "1z", "2z", 1, False, False, False,
+                                             self.dora, self.underneath_dora)
+
+                print(result)
 
             self.next_tsumo_id += 1
             turnplayer = (turnplayer + 1) % 4
