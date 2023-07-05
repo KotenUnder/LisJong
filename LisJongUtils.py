@@ -1356,6 +1356,68 @@ def paicode_prev(paicode_):
     return TILE_TABLE[TILE_TABLE.index(paicode_) - 1]
 
 
+def logic_tile(handstr_, known_tiles={}):
+    # 並び替え
+    handlist = tile_disintegrate(handstr_)
+
+    # シャンテン数が向上する巣手配
+    upgraders = {}
+
+    # 名に切る問題だが、まずは現在のシャンテン数を出す
+    nowshanten = shanten(handstr_)[0]
+
+    # キル杯ごとに、何を積もればシャンテン数が上がるのかを計算する
+    for i in range(len(handlist)):
+        # 2回目以降の出現なら次へ
+        if handlist.index(handlist[i]) != i:
+            continue
+
+        upgraders[handlist[i]] = 0
+
+        for tsumo in TILE_TABLE:
+            # 新しい手配リストを作って、そのシャンテン数と有効杯の枚数を求める
+            temphand = [tsumo]
+            for j in range(len(handlist)):
+                if i != j:
+                    temphand.append(handlist[j])
+            # この状態でシャンテン数を出す
+            temphand.sort(key=tile_index)
+            nextshanten = shanten("".join(temphand))[0]
+            # シャンテン数が減っているなら、記録する
+            if nextshanten < nowshanten:
+                upgraders[handlist[i]] += 4
+                # 既に使用済みがあるならその分減らす
+                if tsumo in known_tiles:
+                    upgraders[handlist[i]] -= known_tiles[tsumo]
+                upgraders[handlist[i]] -= handlist.count(tsumo)
+
+    return upgraders
+
+def tile_index(tilecode):
+    index = 0
+    index += int(tilecode[0])
+    # 赤なら5扱い
+    if tilecode[0] == "0":
+        index += 4.5
+
+    if tilecode[1] == "p":
+        index += 10
+    elif tilecode[1] == "s":
+        index += 20
+    elif tilecode[1] == "z":
+        index += 30
+
+    return index
+
+
+def tile_disintegrate(handstr_):
+    handlist = []
+    for i in range(int(len(handstr_)/2)):
+        handlist.append(handstr_[i*2:i*2+2])
+    handlist.sort(key=tile_index)
+
+    return handlist
+
 if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
@@ -1364,8 +1426,8 @@ if __name__ == '__main__':
     naki = []
     agari = "5z"
 
-    hand = "1m1m1m2m3m4m5m6m7m8m9m9m9m"
-    result = machi(hand, naki)
+    hand = "2m3m7m8m1p4p5p6p3s9s1z7z7z7p"
+    result = logic_tile(hand)
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
