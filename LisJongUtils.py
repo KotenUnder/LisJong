@@ -109,11 +109,49 @@ def calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_de
     return fu
 
 
-def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_):
-
+def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_,
+                        heaven_):
     #
     yaku_list = []
 
+    # 最初に役満チェック　役満成立していたらそこで点数計算終了
+    if yakucheck_big4wind(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Big 4 Winds")
+    elif yakucheck_little4wind(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Little 4 Winds")
+
+    if yakucheck_allterminal(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("All Terminals")
+
+    if yakucheck_4quads(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("4 Quads")
+
+    ninegates = yakucheck_ninegates(closedhandstr_, exposedstrlist_, winningpai_)
+    if ninegates == 1:
+        yaku_list.append("Nine Gates")
+    elif ninegates == 2:
+        yaku_list.append("Nine Gates (nine waits)")
+
+    if yakucheck_big3dragon(closedhandstr_, exposedstrlist_, winningpai_):
+        yaku_list.append("Big 3 Dragons")
+
+    if yakucheck_4conceal(closedhandstr_, exposedstrlist_, winningpai_, winbyself_):
+        yaku_list.append("4 Concealed Triplets")
+
+    if heaven_ and is_dealer_:
+        yaku_list.append("Heavenly Hand")
+    elif heaven_ and not is_dealer_:
+        yaku_list.append("Earth Hand")
+
+    # 役満が１つでもあれば、役満ありとして計算する
+    if len(yaku_list) > 0:
+        limits = count_limit(yaku_list)
+        point, comment = getpoints("Limit"+str(limits), "", is_dealer_, winbyself_)
+        return point, comment, yaku_list
+
+
+
+    # 役満がない普通の場合
     # 立直していたら追加
     if riichi_ == 1:
         yaku_list.append("Ready")
@@ -295,6 +333,33 @@ def count_han(yakulist_):
 
     return han
 
+
+def count_limit(yakulist_):
+    limitdict = {
+        "4 Concealed Triplets":1,
+        "4 Concealed Triplets (single wait)": 2,
+        "Little 4 Winds":1,
+        "Big 4 Winds":2,
+        "13 Orphans":1,
+        "13 Orphans (13 waits)":2,
+        "Nine Gates":1,
+        "Nine Gates (nine waits)":2,
+        "All Honors":1,
+        "All Terminals":1,
+        "All Green":1,
+        "Big 3 Dragons":1,
+        "4 Quads":1,
+        "Heavenly Hand":1,
+        "Earth Hand":1
+    }
+
+    limit = 0
+    for yaku in yakulist_:
+        limit += limitdict[yaku]
+
+    return limit
+
+
 def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_):
     # 面子の取り方ごとに再起させる
     # 特殊形式だけ先に計算する。
@@ -364,6 +429,15 @@ def serialize(closedhandstr_, exposes_, winningpai_):
 # 単独ハイチェック
 def paicheck_simple(haicode_):
     return haicode_[1] != "z" and int(haicode_[0]) >= 2 and int(haicode_[0]) <= 8
+
+
+def paicheck_green(haicode_):
+    if haicode_ == "6z":
+        return True
+    elif int(haicode_[0]) in [2,3,4,6,8] and haicode_[1] == "s":
+        return True
+    else:
+        return False
 
 def paicheck_honor(haicode_):
     return haicode_[1] == "z"
@@ -480,6 +554,17 @@ def yakucheck_3conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
             concealcount += 1
 
     return concealcount == 3
+
+
+def yakucheck_4conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
+    melded = meld(closedhandstr_, exposes_, winningpai_, winbydraw_)
+    #()の刻子かカンがあるか
+    concealcount = 0
+    for mel in melded:
+        if mel.startswith("(") and len(mel) > 6 and mel[1] == mel[3] and mel[3] == mel[5]:
+            concealcount += 1
+
+    return concealcount == 4
 
 
 #3食同順
@@ -700,7 +785,7 @@ def yakucheck_allterminal(closedhandstr_, exposes_, winningpai_):
     return True
 
 #大三元
-def yakkucheck_big3dragon(closedhandstr_, exposes_, winningpai_):
+def yakucheck_big3dragon(closedhandstr_, exposes_, winningpai_):
     melded = meld(closedhandstr_, exposes_, winningpai_)
     raw = debuff(melded)
     flagnumber = 0
@@ -789,10 +874,10 @@ def yakucheck_little4wind(closedhandstr_, exposes_, winningpai_):
 def yakucheck_ninegates(closedhandstr_, exposes_, winningpai_):
     # 一色かつ全部で1-3 9-3
     if len(exposes_) > 0:
-        return False
+        return 0
 
     if not yakucheck_flush(closedhandstr_, exposes_, winningpai_):
-        return False
+        return 0
 
     gates = [0] * 9
     serial = serialize(closedhandstr_, exposes_, winningpai_)
