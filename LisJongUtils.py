@@ -114,6 +114,23 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     #
     yaku_list = []
 
+    # 赤ドラ ０－５の差し替え
+    rdora_count = 0
+    closed2 = []
+    exposed2 = []
+    for trip in closedhandstr_:
+        rdora_count += trip.count("0")
+        closed2.append(trip.replace("0", "5"))
+    for trip in exposedstrlist_:
+        rdora_count += trip.count("0")
+        exposed2.append(trip.replace("0", "5"))
+    rdora_count += winningpai_.count("0")
+
+    closedhandstr_ = closed2
+    exposedstrlist_ = exposed2
+    winningpai_ = winningpai_.replace("0", "5")
+
+
     # 最初に役満チェック　役満成立していたらそこで点数計算終了
     if yakucheck_big4wind(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("Big 4 Winds")
@@ -176,21 +193,6 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
         else:
             yaku_list.append("Last Discard")
 
-    # 赤ドラ ０－５の差し替え
-    rdora_count = 0
-    closed2 = []
-    exposed2 = []
-    for trip in closedhandstr_:
-        rdora_count += trip.count("0")
-        closed2.append(trip.replace("0", "5"))
-    for trip in exposedstrlist_:
-        rdora_count += trip.count("0")
-        exposed2.append(trip.replace("0", "5"))
-    rdora_count += winningpai_.count("0")
-
-    closedhandstr_ = closed2
-    exposedstrlist_ = exposed2
-    winningpai_ = winningpai_.replace("0", "5")
 
     # ふけいさん
     fu = calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_)
@@ -410,7 +412,7 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
     for waits in machiform:
         if winningpai_ in waits[1]:
             # 結果表示
-            result = calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_,
+            result = calculate_score_one(waits[0], exposedstrlist_, winningpai_,
                                          winbyself_, is_dealer_, prevailingwind_, ownwind_,
                                          riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_)
 
@@ -948,7 +950,7 @@ def getpoints(fu_, han_, is_dealer_, winbyself_):
             times = 1
 
         purescore = SCORE_CHILD_MANGAN * 4 * times
-        comment = "Limit" + str(times)
+        comment = str(times) + "Limits"
 
     else:
         if fu_ == 25:
@@ -1180,7 +1182,7 @@ def machi(handstr_, exposes_):
     # 手の長さチェック
     closed_len = int(len(handstr_) / 2)
     if closed_len + len(exposes_) * 3 != 13:
-        raise Exception
+        raise Exception("handstr_:{}, ex{}".format(handstr_, exposes_))
 
     # 赤はいの保存
     redm_flag = False
@@ -1540,15 +1542,11 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    hand = ["(1p2p3p)", "(4p0p6p)", "5z5z", "(6p7p8p)", "[2m2m]"]
+    hand = ["(1p2p3p)", "(4p0p6p)", "1p1p", "(7p8p9p)", "[9p9p]"]
     naki = []
-    agari = "5z"
+    agari = "1p"
 
-    hand = "7m7m9m1p2p3p4p7p8p9p1s2s3s"
-
-    result = machi(hand, [])
-
-    result = calculate_score_one(result[1][0], naki, "9m", True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
+    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
 
     for line in problemfile:

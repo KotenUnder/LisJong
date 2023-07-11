@@ -32,6 +32,12 @@ class Janshi():
     # キル杯を返す
     def draw(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         command, discard_tile, tsumogiri_flag = self.engine_discard(draw_pai_, riichi_, tsumo_, kong_)
+
+        # 自摸切り判断
+        if not discard_tile in self.hand:
+            tsumogiri_flag = True
+
+        # 自摸切りでなく、ちゃんとあるばあいに
         if not tsumogiri_flag:
             if discard_tile in self.hand:
                 discard_id = self.hand.index(discard_tile)
@@ -101,7 +107,7 @@ class KoritsuChu(Janshi):
 
         print("".join(self.hand) + "," + draw_pai_)
         print("Discard {0}".format(maxri))
-        return command, maxri, True
+        return command, maxri, False
 
 
 class Human(Janshi):
@@ -291,7 +297,7 @@ class Table():
             elif tsumo_result[0] == "Tsumo":
                 # 点数計算した結果を表示する
                 result = LisJongUtils.calculate_score("".join(self.players[turnplayer].hand),
-                                             self.players[turnplayer].exposes,
+                                             self.players[turnplayer].exposes[0],
                                              drawtile_id, True, False, "1z", "2z", 1, False, False, False,
                                              self.dora, self.underneath_dora)
 
