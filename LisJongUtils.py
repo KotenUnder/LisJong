@@ -1329,10 +1329,34 @@ def machi(handstr_, exposes_):
 
         return answer_list
 
+    def pair_eater(serial):
+        answer_list = []
+
+        if shanten_sevenpairs(serial) == 0:
+            waits = []
+            needle = 0
+                # 隣と同じかどうかを調べる
+            while needle <= 12:
+                if needle <= 11 and serial[needle*2:needle*2+2] == serial[needle*2+2:needle*2+4]:
+                    waits.append("[{0}]".format(serial[needle*2:needle*2+4]))
+                    needle += 2
+                else:
+                    waits.append(serial[needle*2:needle*2+2])
+                    needle += 1
+
+            answer_list.append(waits)
+
+        else:
+            pass
+
+        return answer_list
+
     waiting_mentsu = head_eater(serial)
     sampler = mentsu_eater(serial)
+    pairs = pair_eater(serial)
 
     sampler.extend(waiting_mentsu)
+    sampler.extend(pairs)
 
     # それぞれsortして、完全一致しているものがあれば削除する
     for sample in sampler:
@@ -1545,6 +1569,10 @@ if __name__ == '__main__':
     hand = ["(1p2p3p)", "(4p0p6p)", "1p1p", "(7p8p9p)", "[9p9p]"]
     naki = []
     agari = "1p"
+
+    hand = "2m2m3m3m4m4m5m5m6m6m7m7m8m"
+
+    result = machi(hand, [])
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 

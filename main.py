@@ -200,6 +200,7 @@ class LisJongServer():
                     parts = message.split(" ")
                     # 名前のセット
                     name = parts[1]
+
                     return
             except Exception as e:
                 print(e)
