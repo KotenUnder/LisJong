@@ -1272,9 +1272,9 @@ def machi(handstr_, exposes_):
             if len(rest_) <= 4:
                 if rest_[0:2] == rest_[2:4]:
                     return [[rest_]]
-                elif rest_[1] != "z" and rest_[3] != "z" and paicode_next(rest_[0:2]) == rest_[2:4]:
+                elif rest_[1] != "z" and rest_[3] != "z" and rest_[1] == rest_[3] and paicode_next(rest_[0:2]) == rest_[2:4]:
                     return [[rest_]]
-                elif rest_[1] != "z" and rest_[3] != "z" and paicode_next(paicode_next(rest_[0:2])) == rest_[2:4]:
+                elif rest_[1] != "z" and rest_[3] != "z" and rest_[1] == rest_[3] and paicode_next(paicode_next(rest_[0:2])) == rest_[2:4]:
                     return [[rest_]]
                 
             thislevel = []
@@ -1544,9 +1544,9 @@ if __name__ == '__main__':
     naki = []
     agari = "5z"
 
-    hand = "7m7m7m7m9m3p4p0p1s1s4s4s4s7s"
+    hand = "7m7m9m1p2p3p4p7p8p9p1s2s3s"
 
-    result = logic_tile(hand)
+    result = machi(hand, [])
 
     result = calculate_score_one(result[1][0], naki, "9m", True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
