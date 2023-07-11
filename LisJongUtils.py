@@ -110,7 +110,7 @@ def calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_de
 
 
 def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_,
-                        heaven_):
+                        heaven_=False):
     #
     yaku_list = []
 
@@ -135,8 +135,11 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     if yakucheck_big3dragon(closedhandstr_, exposedstrlist_, winningpai_):
         yaku_list.append("Big 3 Dragons")
 
-    if yakucheck_4conceal(closedhandstr_, exposedstrlist_, winningpai_, winbyself_):
+    suanko = yakucheck_4conceal(closedhandstr_, exposedstrlist_, winningpai_, winbyself_)
+    if suanko == 1:
         yaku_list.append("4 Concealed Triplets")
+    elif suanko == 2:
+        yaku_list.append("4 Concealed Triplets (single wait)")
 
     if heaven_ and is_dealer_:
         yaku_list.append("Heavenly Hand")
@@ -498,6 +501,9 @@ def yakucheck_yakuhai(closedhandstr_, exposes_, winningpai_, prevailingwind_, ow
 
     return yaku_list
 
+
+
+
 # 役チェック
 # たんやお
 def yakucheck_simples(closedhandstr_, exposes_, winningpai_):
@@ -556,6 +562,7 @@ def yakucheck_3conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
     return concealcount == 3
 
 
+# 0 違う　1 普通 2 単騎待ち
 def yakucheck_4conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
     melded = meld(closedhandstr_, exposes_, winningpai_, winbydraw_)
     #()の刻子かカンがあるか
@@ -564,8 +571,14 @@ def yakucheck_4conceal(closedhandstr_, exposes_, winningpai_, winbydraw_):
         if mel.startswith("(") and len(mel) > 6 and mel[1] == mel[3] and mel[3] == mel[5]:
             concealcount += 1
 
-    return concealcount == 4
-
+    # conceal=4のときで、closedhandのなかに4()あれば単騎待ち
+    if concealcount == 4:
+        for trip in closedhandstr_:
+            if len(trip) == 2:
+                return 2
+        return 1
+    else:
+        return 0
 
 #3食同順
 def yakucheck_3color_chow(closedhandstr_, exposes_, winningpai_):
@@ -764,6 +777,13 @@ def yakucheck_flush(closedhandstr_, exposes_, winningpai_):
             return True
     return False
 
+
+def yakucheck_allgreen(closedhandstr_, exposes_, winningpai_):
+    serial = serialize(closedhandstr_, exposes_, winningpai_)
+    for i in range(int(len(serial)/2)):
+        if not paicheck_green(serial[i*2:i*2+2]):
+            return False
+    return True
 
 #字一色
 def yakucheck_allhonor(closedhandstr_, exposes_, winningpai_):

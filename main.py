@@ -131,7 +131,7 @@ class Human(Janshi):
                     # 当たっていればそれから点数計算
                     agari = LisJongUtils.calculate_score_one(wait[0], [], draw_pai_,
                                                              True, True, "1z", "1z", True, False, False, False,
-                                                             ["3m"], ["4m"])
+                                                             ["3m"], ["4m"], False)
                     print(agari)
             return "Tsumo", False, False
 
