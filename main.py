@@ -247,10 +247,11 @@ class Table():
         for p in range(PLAYER_COUNT):
             self.players[p].initial_draw(starting_hands[p])
 
-        #dora
+        #dora 山全体から-5が表、そこから裏、新どら、新どら裏、とマイナスに続く
         self.dora = []
         self.underneath_dora = []
         self.dora.append(self.pile[POSITION_DORA])
+        self.underneath_dora.append(self.pile[POSITION_DORA - 1])
 
         #doraを通知する
         #for p in range(PLAYER_COUNT):
