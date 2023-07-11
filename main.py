@@ -22,6 +22,8 @@ class Janshi():
         self.score = initial_score_
         self.hand = []
         self.exposes = [[],[],[],[]]
+        self.doras = []
+        self.underneath_doras = []
         self.ponds = [[],[],[],[]]
 
 
@@ -45,6 +47,9 @@ class Janshi():
 
         return command, discard_tile, tsumogiri_flag
 
+
+    def inform_dora(self, tilecode_):
+        self.dora.append(tilecode_)
 
     def others_discard(self, pid_, discarded_, tsumogiri_=False, riichi_=False):
         self.ponds[pid_ % 4].append((discarded_, tsumogiri_, riichi_))
@@ -173,11 +178,31 @@ class LisJongServer():
                 break
             #クライアントの追加
             self.clients.append((conn, addr))
+
+            # HELLOを送信するかチェックして、それを受け取ったらよし
+
             # 読み込みたい気を開始する
-            thread = threading.Thread(target=self.receiver, args=(conn, addr), daemon=True)
+            thread = threading.Thread(target=self.hello, args=(conn, addr), daemon=True)
+            thread.start()
 
             #４人揃ったら待機終了
             if len(self.clients) >= 4:
+                break
+
+
+    def hello(self, connection_, address_):
+        while True:
+            try:
+                # クライアント側から受信する
+                res = connection_.recv(4096)
+                message = res.decode().strip()
+                if message.startswith("HELLO"):
+                    parts = message.split(" ")
+                    # 名前のセット
+                    name = parts[1]
+                    return
+            except Exception as e:
+                print(e)
                 break
 
 
@@ -361,7 +386,10 @@ if __name__ == '__main__':
     print(tilepile)
     print(hash)
 
-    taku.start_game()
+#    taku.start_game()
+
+    serv = LisJongServer()
+    serv.start(80)
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
