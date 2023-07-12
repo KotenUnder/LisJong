@@ -49,16 +49,26 @@ class Janshi():
 
 
     def inform_dora(self, tilecode_):
-        self.dora.append(tilecode_)
+        self.doras.append(tilecode_)
+        self.inform_dora_additional(tilecode_)
+
+
+    def inform_dora_additional(self, tilecode_):
+        pass
+
+
+
+    def inform_newdora(self, tilecode_):
+        self.doras.append(tilecode_)
 
     def others_discard(self, pid_, discarded_, tsumogiri_=False, riichi_=False):
         self.ponds[pid_ % 4].append((discarded_, tsumogiri_, riichi_))
 
-    def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
+    def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         return draw_pai_, riichi_, True
 
-    def engine_chow(self):
 
+    def engine_chow(self):
         pass
 
     def engine_pong(self):
@@ -87,6 +97,62 @@ class Janshi():
         self.hand.sort(key=tile_index)
 
 
+
+class RemoteJanshi(Janshi):
+
+    connection = None
+
+    def __init__(self, conn):
+        super.__init__()
+        self.connection = VirtualClient(conn)
+
+
+    def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
+        message = "DRAW {}".format(draw_pai_)
+
+        if len(riichi_):
+            message += " RIICHI({})".format(",".join(riichi_))
+
+        if tsumo_:
+            message += ",TSUMO"
+
+        self.connection.send_message(message)
+        ret = self.connection.receive_until(["DISCARD", "TSUMO", "KAN"])
+
+        if ret.startswith("DISCARD"):
+            parts = ret.split(" ")
+            return "Discard", parts[1], parts[2]
+
+
+    def inform_dora_additional(self, tilecode_):
+        message = "DORA {}".format(tilecode_)
+        self.connection.send_message(message)
+
+
+
+class VirtualClient:
+    def __init__(self, conn_):
+        self.connection = conn_
+
+
+    def send_message(self, message_):
+        self.connection.send(message_)
+
+    # commandと一致するのが出てくるまで
+    def receive_until(self, commands_, timeout_s_=20):
+        self.connection.settimeout(timeout_s_)
+        try:
+            while True:
+                text = self.connection.recv(4096).decode()
+                lines = text.split("\n")
+                for line in lines:
+                    parts = line.split(" ")
+                    if parts[0] in commands_:
+                        return line.strip()
+        except Exception as e:
+            print(e)
+        finally:
+            self.connection.settimeout(None)
 
 class KoritsuChu(Janshi):
     def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
@@ -163,7 +229,7 @@ class LisJongServer():
     def __init__(self):
         self.clients = []
 
-    def start(self, port_):
+    def start(self, port_, count_=4):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((socket.gethostname(), port_))
         s.listen(5)
@@ -186,7 +252,7 @@ class LisJongServer():
             thread.start()
 
             #４人揃ったら待機終了
-            if len(self.clients) >= 4:
+            if len(self.clients) >= count_:
                 break
 
 
@@ -200,6 +266,8 @@ class LisJongServer():
                     parts = message.split(" ")
                     # 名前のセット
                     name = parts[1]
+
+                    connection_.send("ACCEPT {}".format(name).encode("UTF-8"))
 
                     return
             except Exception as e:
