@@ -1490,6 +1490,10 @@ DORA_TABLE = ["2m","3m","4m","5m", "6m","7m","8m","9m", "1m",
                     "2z", "3z", "4z", "1z", "6z", "7z", "5z"]
 
 
+def dora_from_indicator(doraindicator_):
+    tileid = TILE_TABLE.index(doraindicator_)
+    return DORA_TABLE[tileid]
+
 def paicode_next(paicode_):
     return TILE_TABLE[TILE_TABLE.index(paicode_) + 1]
 

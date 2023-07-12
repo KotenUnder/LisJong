@@ -344,8 +344,8 @@ class Table():
         #dora 山全体から-5が表、そこから裏、新どら、新どら裏、とマイナスに続く
         self.dora = []
         self.underneath_dora = []
-        self.dora.append(self.pile[POSITION_DORA])
-        self.underneath_dora.append(self.pile[POSITION_DORA - 1])
+        self.dora.append(LisJongUtils.dora_from_indicator(self.pile[POSITION_DORA]))
+        self.underneath_dora.append(LisJongUtils.dora_from_indicator(self.pile[POSITION_DORA - 1]))
 
         #doraを通知する
         #for p in range(PLAYER_COUNT):
@@ -455,7 +455,7 @@ if __name__ == '__main__':
     print(tilepile)
     print(hash)
 
-#    taku.start_game()
+    taku.start_game()
 
     serv = LisJongServer()
     serv.start(80)
