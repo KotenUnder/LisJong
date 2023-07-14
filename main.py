@@ -12,6 +12,7 @@ import LisJongUtils
 
 
 TILE_TOTAL = 4 * (9+9+9+7)
+DEADWALL_COUNT = 14
 PLAYER_COUNT = 4
 POSITION_DORA = TILE_TOTAL - 5
 
@@ -48,6 +49,31 @@ class Janshi():
         return command, discard_tile, tsumogiri_flag
 
 
+
+    def call(self, discarded_, choice_):
+        # そのまま投げて、結果を確認してから返す
+        action = self.engine_call(discarded_, choice_)
+        if action[0] == "Chii":
+            return "Chii", action[1]
+        elif action[1] == "Pong":
+            return action
+        elif action[1] == "Kan":
+            return action
+        else:
+            return "Skip", []
+
+
+    def inform_call(self, turnplayer_relative_, discarded_, callplayer_relative_, voice_, exposed_):
+        #すでに巣手配処理は去れていると考えて
+
+        #巣手配に対して追加する
+        self.ponds[turnplayer_relative_][-1]
+
+
+    def engine_call(self, discarded_, choice_):
+        return "Skip", []
+
+
     def inform_dora(self, tilecode_):
         self.doras.append(tilecode_)
         self.inform_dora_additional(tilecode_)
@@ -61,8 +87,15 @@ class Janshi():
     def inform_newdora(self, tilecode_):
         self.doras.append(tilecode_)
 
-    def others_discard(self, pid_, discarded_, tsumogiri_=False, riichi_=False):
-        self.ponds[pid_ % 4].append((discarded_, tsumogiri_, riichi_))
+    def others_discard(self, relid_, discarded_, tsumogiri_=False, riichi_=False, caller_relid_=-1,
+                       exposed_=[]):
+        self.ponds[relid_].append((discarded_, tsumogiri_, riichi_, caller_relid_))
+        # 鳴いた人がいる場合、その処理を追加
+        if caller_relid_ >= 0:
+            exposed_trip = discarded_ + "".join(exposed_)
+            #並び替えする
+            exposed_arranged = "{" + LisJongUtils.arrange_tile(exposed_trip) + "}"
+            self.exposes[caller_relid_].append(exposed_arranged)
 
     def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         return draw_pai_, riichi_, True
@@ -380,11 +413,29 @@ class Table():
 
             tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
             # 0commnad, 1hai, 2tsumogiriflag
-            if tsumo_result[0] == "Discard":
+            if tsumo_result[0] == "Discard" or tsumo_result[0] == "Riichi":
+                # 他の人で、鳴ける人がいるかどうかを確認する
+                if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT:
+                    for p in range(4):
+                        if p != turnplayer:
+                            calla = LisJongUtils.check_call("".join(self.players[p].hand), tsumo_result[1])
+                            message = ""
+                            #次のプレイヤーのみチー可能
+                            if p == (turnplayer + 1) % 4 and len(calla["Chii"]) > 0:
+                                for chiiable in calla["Chii"]:
+                                    message += "Chii({}),".format(",".join(chiiable))
+                            if len(calla["Pong"]) > 0:
+                                message += "Pong({}),".format(",".join(calla["Pong"][0]))
+                            if len(calla["Kan"]) > 0:
+                                message += "Kan({})".format(",".join(calla["Kan"]))
+
+                            #messageがあれば送信
+                            if len(message) > 0:
+                                self.players[p].call(tsumo_result[1], calla, message)
                 # 全員に巣手配通知
                 for p in range(4):
-                    self.players[p].others_discard((p + turnplayer) % 4, tsumo_result[1])
-                pass
+                    self.players[p].others_discard((p - turnplayer) % 4, tsumo_result[1], tsumo_result[2])
+
             elif tsumo_result[0] == "Riich":
                 pass
             elif tsumo_result[0] == "Kong":

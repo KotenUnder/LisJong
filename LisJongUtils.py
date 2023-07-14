@@ -1438,9 +1438,9 @@ def check_call(handstr_, discarded_):
     handlist.sort(key=tileid_from_str)
 
     result = {
-        "pon":[],
-        "kan":[],
-        "chi":[]
+        "Pong":[],
+        "Kan":[],
+        "Chii":[]
     }
 
     #チーは、前2があればいい
@@ -1448,20 +1448,20 @@ def check_call(handstr_, discarded_):
         #かんちゃんけい
         if int(discarded_[0]) >= 2 and int(discarded_[0]) <= 8:
             if paicode_prev(discarded_) in handlist and paicode_next(discarded_) in handlist:
-                result["chi"].append([paicode_prev(discarded_), paicode_next(discarded_)])
+                result["Chii"].append([paicode_prev(discarded_), paicode_next(discarded_)])
         if int(discarded_[0]) >= 3:
             if paicode_prev(discarded_) in handlist and paicode_prev(paicode_prev(discarded_)) in handlist:
-                result["chi"].append([paicode_prev(discarded_), paicode_prev(paicode_prev(discarded_))])
+                result["Chii"].append([paicode_prev(discarded_), paicode_prev(paicode_prev(discarded_))])
         if int(discarded_[0]) <= 7:
             if paicode_next(discarded_) in handlist and paicode_next(paicode_next(discarded_)) in handlist:
-                result["chi"].append([paicode_next(discarded_), paicode_next(paicode_next(discarded_))])
+                result["Chii"].append([paicode_next(discarded_), paicode_next(paicode_next(discarded_))])
 
     #ポンのチェック
     if handlist.count(discarded_) >= 2:
-        result["pon"].append([discarded_, discarded_])
+        result["Pong"].append([discarded_, discarded_])
 
     if handlist.count(discarded_) >= 3:
-        result["kan"].append([discarded_, discarded_, discarded_])
+        result["Kan"].append([discarded_, discarded_, discarded_])
 
     return result
 
@@ -1569,6 +1569,12 @@ def tile_disintegrate(handstr_):
 if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
+
+    print(-1 % 4)
+    print(0 % 4)
+    print(4 % 4)
+    print(-3 % 4)
+    print(-7 % 4)
 
     hand = ["(1p2p3p)", "(4p0p6p)", "1p1p", "(7p8p9p)", "[9p9p]"]
     naki = []
