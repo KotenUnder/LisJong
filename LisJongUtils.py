@@ -1203,6 +1203,34 @@ def machi(handstr_, exposes_):
     # 3面子１頭と４面子頭待ちとに分ける
     serial = "".join(handstr_)
 
+
+    # 国士夢想と考えるパターン
+    # 全てがか
+    handlist = disintegrate_hand(handstr_)
+
+    def kokuchi_eater(handlist_):
+        if len(handlist_) != 13:
+            return []
+        onelist = ["1m", "9m", "1s", "9s", "1p", "9p", "1z", "2z", "3z", "4z", "5z", "6z", "7z"]
+        twolist = []
+        for hai in handlist_:
+            if not paicheck_orphan(hai):
+                return []
+            if hai in onelist:
+                onelist.remove(hai)
+                continue
+            elif len(twolist) > 0:
+                return []
+            else:
+                twolist.append(hai)
+
+        #全部終了時、onelistが空っぽなら、まるまる
+        if len(onelist) == 0:
+            return [["1m9m1s9s1p9p1z2z3z4z5z6z7z"],
+            ["1m", "9m", "1s", "9s", "1p", "9p", "1z", "2z", "3z", "4z", "5z", "6z", "7z"]]
+        else:
+            return [handstr_, twolist]
+
     # 4面子頭待ちとして考える
 
     def mentsu_eater(rest_):
@@ -1354,9 +1382,11 @@ def machi(handstr_, exposes_):
     waiting_mentsu = head_eater(serial)
     sampler = mentsu_eater(serial)
     pairs = pair_eater(serial)
+    kokushiable = kokuchi_eater(serial)
 
     sampler.extend(waiting_mentsu)
     sampler.extend(pairs)
+    sampler.extend(kokushiable)
 
     # それぞれsortして、完全一致しているものがあれば削除する
     for sample in sampler:
@@ -1491,6 +1521,7 @@ DORA_TABLE = ["2m","3m","4m","5m", "6m","7m","8m","9m", "1m",
 
 
 def dora_from_indicator(doraindicator_):
+    doraindicator_ = doraindicator_.replace("0", "5")
     tileid = TILE_TABLE.index(doraindicator_)
     return DORA_TABLE[tileid]
 
@@ -1499,6 +1530,13 @@ def paicode_next(paicode_):
 
 def paicode_prev(paicode_):
     return TILE_TABLE[TILE_TABLE.index(paicode_) - 1]
+
+
+def disintegrate_hand(handstr_):
+    handlist = []
+    for i in range(int(len(handstr_) / 2)):
+        handlist.append(handstr_[i*2:i*2+2])
+    return  handlist.sort(key=tile_index)
 
 
 def logic_tile(handstr_, known_tiles={}):

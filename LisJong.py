@@ -53,7 +53,9 @@ class Janshi():
     def call(self, discarded_, choice_, message_):
         # そのまま投げて、結果を確認してから返す
         action = self.engine_call(discarded_, choice_, message_)
-        if action[0] == "Chii":
+        if action[0] == "Ron":
+            return action
+        elif action[0] == "Chii":
             return "Chii", action[1]
         elif action[1] == "Pong":
             return action
@@ -71,7 +73,10 @@ class Janshi():
 
 
     def engine_call(self, discarded_, choice_, message_):
-        return "Skip", []
+        if message_.startswith("Ron"):
+            return "Ron", []
+        else:
+            return "Skip", []
 
 
     def inform_dora(self, tilecode_):
@@ -423,13 +428,21 @@ class Table():
             tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
             # 0commnad, 1hai, 2tsumogiriflag
             if tsumo_result[0] == "Discard" or tsumo_result[0] == "Riichi":
-                # 他の人で、鳴ける人がいるかどうかを確認する
-                if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT:
-                    for p in range(4):
-                        if p != turnplayer:
+                # ロンがあるかどうかを見る
+                callret = [0] * 4
+                for p in range(4):
+                    message = ""
+                    if p != turnplayer:
+                        machiresult = LisJongUtils.machi("".join(self.players[p].hand), self.players[p].exposes[0])
+                        for waits in machiresult:
+                            if tsumo_result[1] in waits[1]:
+                                # ロン可能
+                                message += "Ron,"
+                                break
+                        # 鳴く人がいれば、turnplayerから逆順に確認する
+                        if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT:
                             calla = LisJongUtils.check_call("".join(self.players[p].hand), tsumo_result[1])
-                            message = ""
-                            #次のプレイヤーのみチー可能
+                            # 次のプレイヤーのみチー可能
                             if p == (turnplayer + 1) % 4 and len(calla["Chii"]) > 0:
                                 for chiiable in calla["Chii"]:
                                     message += "Chii({}),".format(",".join(chiiable))
@@ -438,10 +451,11 @@ class Table():
                             if len(calla["Kan"]) > 0:
                                 message += "Kan({})".format(",".join(calla["Kan"][0]))
 
-                            #messageがあれば送信
+                            # messageがあれば送信
                             if len(message) > 0:
-                                self.players[p].call(tsumo_result[1], calla, message)
-                # 全員に巣手配通知
+                                callret[p] = self.players[p].call(tsumo_result[1], calla, message)
+
+                    # 全員に巣手配通知
                 for p in range(4):
                     self.players[p].others_discard((p - turnplayer) % 4, tsumo_result[1], tsumo_result[2])
 
