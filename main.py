@@ -50,9 +50,9 @@ class Janshi():
 
 
 
-    def call(self, discarded_, choice_):
+    def call(self, discarded_, choice_, message_):
         # そのまま投げて、結果を確認してから返す
-        action = self.engine_call(discarded_, choice_)
+        action = self.engine_call(discarded_, choice_, message_)
         if action[0] == "Chii":
             return "Chii", action[1]
         elif action[1] == "Pong":
@@ -70,7 +70,7 @@ class Janshi():
         self.ponds[turnplayer_relative_][-1]
 
 
-    def engine_call(self, discarded_, choice_):
+    def engine_call(self, discarded_, choice_, message_):
         return "Skip", []
 
 
@@ -257,6 +257,15 @@ class Human(Janshi):
             return command, tilecode, True
 
 
+    def engine_call(self, discarded_, choice_, message_):
+        #泣きがあったことを示す
+        print("Discarded {}".format(discarded_))
+        print(choice_)
+
+        # 椪かちーかだけ
+        return "Skip", []
+
+
 
 class LisJongServer():
     def __init__(self):
@@ -427,7 +436,7 @@ class Table():
                             if len(calla["Pong"]) > 0:
                                 message += "Pong({}),".format(",".join(calla["Pong"][0]))
                             if len(calla["Kan"]) > 0:
-                                message += "Kan({})".format(",".join(calla["Kan"]))
+                                message += "Kan({})".format(",".join(calla["Kan"][0]))
 
                             #messageがあれば送信
                             if len(message) > 0:
