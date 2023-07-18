@@ -15,6 +15,7 @@ TILE_TOTAL = 4 * (9+9+9+7)
 DEADWALL_COUNT = 14
 PLAYER_COUNT = 4
 POSITION_DORA = TILE_TOTAL - 5
+WIND_TABLE = ["1z", "2z", "3z", "4z"]
 
 
 class Janshi():
@@ -236,7 +237,8 @@ class Human(Janshi):
                 line += ",kong_{0}".format(kong_tile)
         print(line)
 
-        tilecode = input()
+        #tilecode = input()
+        tilecode = ""
 
         if tilecode == "Tsumo":
             waits = LisJongUtils.machi("".join(self.hand), [])
@@ -256,6 +258,8 @@ class Human(Janshi):
         else:
             command = "Discard"
 
+        if tilecode == "":
+            return command, draw_pai_, True
         if tilecode != draw_pai_:
             return command, tilecode, False
         else:
@@ -401,6 +405,8 @@ class Table():
         self.next_tsumo_id = 48
         self.kong_count = 0
 
+        gameresult = ""
+
         turnplayer = 0
         while self.next_tsumo_id <= 122:
             # 現在のターンプレイヤーに引かせる
@@ -431,13 +437,12 @@ class Table():
                 # ロンがあるかどうかを見る
                 callret = [0] * 4
                 for p in range(4):
-                    message = ""
+                    callmessage = ""
                     if p != turnplayer:
                         machiresult = LisJongUtils.machi("".join(self.players[p].hand), self.players[p].exposes[0])
                         for waits in machiresult:
-                            if tsumo_result[1] in waits[1]:
-                                # ロン可能
-                                message += "Ron,"
+                            if str(tsumo_result[1]) in waits[1]:
+                                callmessage += "Ron,"
                                 break
                         # 鳴く人がいれば、turnplayerから逆順に確認する
                         if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT:
@@ -445,22 +450,52 @@ class Table():
                             # 次のプレイヤーのみチー可能
                             if p == (turnplayer + 1) % 4 and len(calla["Chii"]) > 0:
                                 for chiiable in calla["Chii"]:
-                                    message += "Chii({}),".format(",".join(chiiable))
+                                    callmessage += "Chii({}),".format(",".join(chiiable))
                             if len(calla["Pong"]) > 0:
-                                message += "Pong({}),".format(",".join(calla["Pong"][0]))
+                                callmessage += "Pong({}),".format(",".join(calla["Pong"][0]))
                             if len(calla["Kan"]) > 0:
-                                message += "Kan({})".format(",".join(calla["Kan"][0]))
+                                callmessage += "Kan({})".format(",".join(calla["Kan"][0]))
 
                             # messageがあれば送信
-                            if len(message) > 0:
-                                callret[p] = self.players[p].call(tsumo_result[1], calla, message)
+                            if len(callmessage) > 0:
+                                callret[p] = self.players[p].call(tsumo_result[1], calla, callmessage)
+
+                # 次のプレイヤーから見て、ロンがあれば終了
+                for offset in range(1, 4, 1):
+                    if isinstance(callret[(turnplayer + offset) % 4], tuple) and callret[(turnplayer + offset) % 4][0] == "Ron":
+                        # その人の論として終了 ふりこみ、あがり
+                        gameresult += "Ron({},{}),".format(turnplayer, (turnplayer + offset) % 4)
+                if len(gameresult) > 0:
+                    break
+
+                # ロンがなければ、次はポンを調べる
+                called = ""
+                for offset in range(3):
+                    if isinstance(callret[(turnplayer - offset - 1) % 4], list) and callret[(turnplayer - offset - 1) % 4][0] != "Skip":
+                        # そのアクションを実行する
+                        # 捨てはいを確定させ、鳴かれたことを記録する
+                        # 鳴いた灰
+                        caller = (turnplayer - offset - 1) % 4
+                        called = "{" + tsumo_result[1] + "".join(callret[(turnplayer - offset - 1) % 4][1]) + "}"
+                        for p in range(4):
+                            self.players[p].ponds[(caller - p) % 4].append(called)
+                            self.players[p].inform_call((turnplayer - p) % 4, tsumo_result[1],
+                                                        (caller - p) % 4, called)
+
+                # 泣きがあれば、自摸なしにその人のターンとする
+                if len(called) > 0:
+                    turnplayer = caller
+
+                else:
+                    turnplayer = (turnplayer + 1) % 4
+                    self.next_tsumo_id += 1
+
 
                     # 全員に巣手配通知
                 for p in range(4):
                     self.players[p].others_discard((p - turnplayer) % 4, tsumo_result[1], tsumo_result[2])
 
-            elif tsumo_result[0] == "Riich":
-                pass
+
             elif tsumo_result[0] == "Kong":
                 pass
             elif tsumo_result[0] == "Tsumo":
@@ -470,10 +505,71 @@ class Table():
                                              drawtile_id, True, False, "1z", "2z", 1, False, False, False,
                                              self.dora, self.underneath_dora)
 
-                print(result)
+                gameresult = "Tsumo"
+                break
 
-            self.next_tsumo_id += 1
-            turnplayer = (turnplayer + 1) % 4
+
+        # gameresultによる分岐
+        if gameresult.startswith("Tsumo"):
+            # 点数計算をする
+            score = LisJongUtils.calculate_score("".join(self.players[turnplayer].hand),
+                                                 self.players[turnplayer].exposes[0],
+                                                 drawtile_id, True, turnplayer == self.game - 1,
+                                                 WIND_TABLE[self.game - 1], WIND_TABLE[turnplayer],
+                                                 True, False, self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                 False, self.dora, self.underneath_dora)
+
+            print(score)
+            #TODO 結果を知らせる
+
+            #点数の移動
+            if turnplayer == self.game - 1:
+                # 親ならall部分除いて移動
+                diffpoint = int(score[0][0:-3])
+                # 本場の分を加算する
+                diffpoint += self.extra * 100
+                for p in range(4):
+                    if p != turnplayer:
+                        self.players[p].score -= diffpoint
+                    else:
+                        self.players[p].score += 3*diffpoint
+            else:
+                diffpoint_child = int(score[0].split("-")[0]) + self.extra * 100
+                diffpoint_dealer = int(score[0].split("-")[1]) + self.extra * 100
+                for p in range(4):
+                    if p == turnplayer:
+                        self.players[p].score += 2*diffpoint_child + diffpoint_dealer
+                    elif p == self.game - 1:
+                        self.players[p].score -= diffpoint_dealer
+                    else:
+                        self.players[p].score -= diffpoint_child
+
+            for p in range(4):
+                print(self.players[p].score)
+
+        elif gameresult.startswith("Ron"):
+            # 点数計算
+            payer_id = int(gameresult[4])
+            winner_id = int(gameresult[6])
+            score = LisJongUtils.calculate_score("".join(self.players[winner_id].hand),
+                                                 self.players[winner_id].exposes[0],
+                                                 tsumo_result[1], False, winner_id == self.game - 1,
+                                                 WIND_TABLE[self.game - 1], WIND_TABLE[winner_id],
+                                                 True, False, self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                 False, self.dora, self.underneath_dora)
+
+            print(score)
+            diffpoint = int(score[0]) + self.extra * 300
+            self.players[payer_id].score -= diffpoint
+            self.players[winner_id].score += diffpoint
+
+            for p in range(4):
+                print(self.players[p].score)
+
+        elif gameresult.startswith("Goulash"):
+            pass
+
+
 
 
     #
@@ -531,8 +627,8 @@ if __name__ == '__main__':
 
     taku.start_game()
 
-    serv = LisJongServer()
-    serv.start(80)
+#    serv = LisJongServer()
+#    serv.start(80)
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
