@@ -366,6 +366,9 @@ def count_limit(yakulist_):
 
 
 def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_dealer_, prevailingwind_, ownwind_, riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_):
+
+    # 念のため並び替え
+    closedhandstr_ = arrange_tile(closedhandstr_)
     # 面子の取り方ごとに再起させる
     # 特殊形式だけ先に計算する。
     # 国士と考えてチェック
@@ -410,13 +413,15 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
     # 暫定措置として、最初にヒットした待ちだけ
     machiform = machi(closedhandstr_, exposedstrlist_)
     for waits in machiform:
-        if winningpai_ in waits[1]:
+        if winningpai_.replace("0", "5") in waits[1]:
             # 結果表示
             result = calculate_score_one(waits[0], exposedstrlist_, winningpai_,
                                          winbyself_, is_dealer_, prevailingwind_, ownwind_,
                                          riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_)
 
             return result
+
+    print("Error maybe")
 
     # 七トイツと考えて調べる
 
@@ -1115,7 +1120,10 @@ def optimize_melds(m_code, p_code, s_code, h_code):
     meld_candidate = [[0 for i in range(4)] for j in range(len(blocks)+1)]
     for i in range(len(blocks)):
         # 孤立杯除去
-        alpha_number = meldstable[blocks[i]].zfill(4)
+        try:
+            alpha_number = meldstable[blocks[i]].zfill(4)
+        except KeyError as e:
+            alpha_number = 1010
         for j in range(4):
             meld_candidate[i][j] = int(alpha_number[j])
 
@@ -1616,6 +1624,10 @@ if __name__ == '__main__':
     hand = "3s3s4s4s5s5s6s6s7s7s8s9s9s"
 
     result = machi(hand, [])
+
+    callmessage = ""
+    callmessage += "Ron,"
+    callmessage += "Chi,"
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
