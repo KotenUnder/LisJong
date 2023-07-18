@@ -1515,8 +1515,8 @@ TILE_TABLE = ["1m","2m","3m","4m","5m", "6m","7m","8m","9m",
                     "1z", "2z", "3z", "4z", "5z", "6z", "7z"]
 
 DORA_TABLE = ["2m","3m","4m","5m", "6m","7m","8m","9m", "1m",
-                    "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p", "1p"
-                    "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "1s"
+                    "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p", "1p",
+                    "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "1s",
                     "2z", "3z", "4z", "1z", "6z", "7z", "5z"]
 
 
@@ -1524,6 +1524,7 @@ def dora_from_indicator(doraindicator_):
     doraindicator_ = doraindicator_.replace("0", "5")
     tileid = TILE_TABLE.index(doraindicator_)
     return DORA_TABLE[tileid]
+
 
 def paicode_next(paicode_):
     return TILE_TABLE[TILE_TABLE.index(paicode_) + 1]
@@ -1608,17 +1609,11 @@ if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
 
-    print(-1 % 4)
-    print(0 % 4)
-    print(4 % 4)
-    print(-3 % 4)
-    print(-7 % 4)
-
     hand = ["(1p2p3p)", "(4p0p6p)", "1p1p", "(7p8p9p)", "[9p9p]"]
     naki = []
     agari = "1p"
 
-    hand = "2m2m3m3m4m4m5m5m6m6m7m7m8m"
+    hand = "3s3s4s4s5s5s6s6s7s7s8s9s9s"
 
     result = machi(hand, [])
 
