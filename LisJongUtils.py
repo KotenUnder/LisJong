@@ -293,6 +293,11 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
 
     point, comment = getpoints(fu, han, is_dealer_, winbyself_)
 
+    # 返すべきものが多いのでjson形式とする
+    result = {
+        "comment":comment
+    }
+
     return point, comment, yaku_list
 
 
@@ -969,6 +974,8 @@ def getpoints(fu_, han_, is_dealer_, winbyself_):
         #潘
         if han_ < 6:
             purescore = purescore * (2 ** han_)
+            comment = "{}fu{}han".format(fu_, han_)
+
         # 2000異常なら満貫扱い
         if purescore >= 2000 or han_ >= 5:
             # 満貫扱い
