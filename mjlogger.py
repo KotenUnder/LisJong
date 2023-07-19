@@ -82,6 +82,7 @@ class DennoJson(MjLogger):
                     "shoupai":inihandlist,
                 }
             }
+
         )
 
         id_offset = info["game"]
