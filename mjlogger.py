@@ -285,5 +285,6 @@ YAKU_DICTIONARY = {
     "Flush":[6,"清一色"],
 
     "Dora":[None,"ドラ"],
-    "Underneath Dora":[None,"裏ドラ"]
+    "Underneath Dora":[None,"裏ドラ"],
+    "Red Dora":[None,"赤ドラ"]
 }

@@ -47,6 +47,11 @@ class Janshi():
         if command == "Tsumo":
             return "Tsumo", draw_pai_, tsumogiri_flag
 
+        # 立直中で上がらないあれば自摸切り絶対
+        if self.riichi_flag:
+            tsumogiri_flag = True
+
+
         # 自摸切り判断
         if not discard_tile in self.hand:
             tsumogiri_flag = True
@@ -215,6 +220,9 @@ class KoritsuChu(Janshi):
         if tsumo_:
             return "Tsumo", False, False
 
+        if self.riichi_flag:
+            return "Discard", draw_pai_, True
+
         # 立直可能であれば立直する
         if riichi_:
             command = "Riichi"
@@ -230,6 +238,10 @@ class KoritsuChu(Janshi):
             if hairi[ri] >= maxuke:
                 maxri = ri
                 maxuke = hairi[ri]
+
+        # 5を切ろうとしてなかったらをキル
+        if maxri not in self.hand and maxri != draw_pai_:
+            maxri = maxri.replace("5", "0")
 
         print("".join(self.hand) + "," + draw_pai_)
         print("Discard {0}".format(maxri))

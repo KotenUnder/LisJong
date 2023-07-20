@@ -736,7 +736,7 @@ def yakucheck_3quads(closedhandstr_, exposes_, winningpai_):
 
     quads_count = 0
     for trip in raw:
-        if len(trip) == 10:
+        if len(trip) == 8:
             quads_count += 1
 
     return quads_count == 3
@@ -747,7 +747,7 @@ def yakucheck_4quads(closedhandstr_, exposes_, winningpai_):
 
     quads_count = 0
     for trip in raw:
-        if len(trip) == 10:
+        if len(trip) == 8:
             quads_count += 1
 
     return quads_count == 4
@@ -973,8 +973,8 @@ def getpoints(fu_, han_, is_dealer_, winbyself_):
         purescore *= 4
         #潘
         if han_ < 6:
+            comment = "{}fu{}han".format(int(purescore/4), han_)
             purescore = purescore * (2 ** han_)
-            comment = "{}fu{}han".format(fu_, han_)
 
         # 2000異常なら満貫扱い
         if purescore >= 2000 or han_ >= 5:
@@ -1450,7 +1450,7 @@ def machi(handstr_, exposes_):
 
         result.append((newsampler[i], waits))
 
-    #赤があれば元に戻す
+    # TODO 赤があれば元に戻す
 
 
     return result
@@ -1557,7 +1557,7 @@ def disintegrate_hand(handstr_):
 
 def logic_tile(handstr_, known_tiles={}):
     # 並び替え
-    handlist = tile_disintegrate(handstr_)
+    handlist = tile_disintegrate(handstr_.replace("0", "5"))
 
     # シャンテン数が向上する巣手配
     upgraders = {}
