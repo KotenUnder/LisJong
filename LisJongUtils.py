@@ -241,9 +241,9 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
             yaku_list.append("Junchan")
     elif yakucheck_chanta(closedhandstr_, exposedstrlist_, winningpai_):
         if len(exposedstrlist_) > 0:
-            yaku_list.append("Chanta")
-        else:
             yaku_list.append("Chanta (open)")
+        else:
+            yaku_list.append("Chanta")
 
     #ほんいつけい
     if yakucheck_semiflush(closedhandstr_, exposedstrlist_, winningpai_):

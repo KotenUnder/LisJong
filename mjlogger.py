@@ -78,7 +78,7 @@ class DennoJson(MjLogger):
                     "changbang":info["extra"],
                     "lizhibang":info["deposit"],
                     "defen":iniscorelist,
-                    "baopai":lisjong_to_tenhou(info["dora1"]),
+                    "baopai":lisjong_to_tenhou(info["dora1_indicator"]),
                     "shoupai":inihandlist,
                 }
             }
@@ -108,6 +108,11 @@ class DennoJson(MjLogger):
 
 
         # 対局結果
+        # 点数変化の相対化
+        scorediff = [0] * 4
+        for abid in range(4):
+            scorediff[relativize(abid, info["game"])] = info["score_diff"][abid]
+
         # ロン上がり
         if "win" in info and info["win"]["winby"] == "Ron":
             wincase = info["win"]
@@ -126,25 +131,57 @@ class DennoJson(MjLogger):
                     "fu":fu,
                     "fanshu":han,
                     "defen":int(wincase["score"][0]),
-                    "hupai":self.make_yakulist(wincase["score"][2])
+                    "hupai":self.make_yakulist(wincase["score"][2]),
+                    "fenpei":scorediff
                 },
-                "fenpei":info["score_diff"]
             }))
-            pass
+
+        elif "win" in info and info["win"]["winby"] == "Tsumo":
+            # 最後のアクションは消す
+            del game[-1]
+
+            wincase = info["win"]
+            wincomment = wincase["score"][1]
+            fu = 30
+            han = 5
+            if "fu" in wincomment:
+                fu = int(wincomment[0:2])
+                han = int(wincomment[4])
+            parts = wincase["score"][0].split("-")
+            if len(parts) > 1:
+                purescore = 2* int(parts[0]) + int(parts[1])
+            else:
+                purescore = 3 * int(wincase["score"][0][0:-3])
+
+            game.append(({
+                "hule":{
+                    "l":relativize(wincase["winner"], id_offset),
+                    "shoupai":lisjong_to_tenhou(wincase["hand"]) + lisjong_to_tenhou(wincase["winning_tile"]),
+                    # TODO 符を正しくする　Utilsまで変更が波及してしまう
+                    "fu":fu,
+                    "fanshu":han,
+                    "defen":purescore,
+                    "hupai":self.make_yakulist(wincase["score"][2]),
+                    "fenpei":scorediff
+                },
+            }))
+
 
         # 流局
         elif "draw" in info:
             # 手配の並び替えとフォーマット変換
             shoupai = [0] * 4
+            scorediff = [0] * 4
             for abid in range(4):
                 shoupai[relativize(abid, info["game"])] = lisjong_to_tenhou(info["draw"]["hand"][abid])
+                scorediff[relativize(abid, info["game"])] = info["score_diff"][abid]
 
             if info["draw"]["name"] == "Goulash":
                 game.append({
                     "pingju": {
                         "name": "荒牌平局",
                         "shoupai": shoupai,
-                        "fenpei": info["score_diff"]
+                        "fenpei": scorediff
                         }})
 
 
@@ -231,6 +268,9 @@ YAKU_DICTIONARY = {
     "Peace": [1, "平和"],
     "1Peko":[1, "一盃口"],
     "All Simples":[1,"断么九"],
+    "Last Pick":[1, "海底摸月"],
+    "Last Discard":[1, "河底撈魚"],
+    "Chanta":[2, "チャンタ"],
     "Straight":[2, "一気通貫"],
     "3 Color Straights":[2,"三色同順"],
     "3 Concealed Triplets":[2,"三暗刻"],

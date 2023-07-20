@@ -44,6 +44,9 @@ class Janshi():
     def draw(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         command, discard_tile, tsumogiri_flag = self.engine_discard(draw_pai_, riichi_, tsumo_, kong_)
 
+        if command == "Tsumo":
+            return "Tsumo", draw_pai_, tsumogiri_flag
+
         # 自摸切り判断
         if not discard_tile in self.hand:
             tsumogiri_flag = True
@@ -412,6 +415,9 @@ class Table():
 
 
     def start_game(self):
+
+        self.loginfo = {}
+
         # 灰山生成
         tilepilestr, hashstr = self.create_tilepile()
 
@@ -573,7 +579,7 @@ class Table():
                 break
 
             # 残り枚数がないなら、荒れ牌流局とする
-            if self.next_tsumo_id > (TILE_TOTAL - DEADWALL_COUNT - self.kong_count):
+            if self.next_tsumo_id >= (TILE_TOTAL - DEADWALL_COUNT - self.kong_count):
                 gameresult = "Goulash"
                 break
 
@@ -593,6 +599,7 @@ class Table():
             #TODO 結果を知らせる
 
             #点数の移動
+            scorediff = [0] * 4
             if turnplayer == self.game:
                 # 親ならall部分除いて移動
                 diffpoint = int(score[0][0:-3])
@@ -600,22 +607,39 @@ class Table():
                 diffpoint += self.extra * 100
                 for plid in range(4):
                     if plid != turnplayer:
+                        scorediff[plid] = - diffpoint
                         self.players[plid].score -= diffpoint
                     else:
-                        self.players[plid].score += 3*diffpoint
+                        scorediff[plid] = 3 * diffpoint + self.deposit * 1000
+                        self.players[plid].score += scorediff[plid]
             else:
                 diffpoint_child = int(score[0].split("-")[0]) + self.extra * 100
                 diffpoint_dealer = int(score[0].split("-")[1]) + self.extra * 100
                 for plid in range(4):
                     if plid == turnplayer:
+                        scorediff[plid] = 2*diffpoint_child + diffpoint_dealer + self.deposit*1000
                         self.players[plid].score += 2*diffpoint_child + diffpoint_dealer
                     elif plid == self.game:
+                        scorediff[plid] = - diffpoint_dealer
                         self.players[plid].score -= diffpoint_dealer
                     else:
+                        scorediff[plid] = - diffpoint_child
                         self.players[plid].score -= diffpoint_child
 
             self.players[turnplayer].score += 1000*self.deposit
             self.deposit = 0
+
+            # 上がりのログ保存
+            self.loginfo["win"] = {
+                "winby":"Tsumo",
+                "winner":turnplayer,
+                "hand":"".join(self.players[turnplayer].hand),"exposed":self.players[turnplayer].exposes[0],
+                "winning_tile":drawtile_id,
+                "score":score
+            }
+
+            self.loginfo["score_diff"] = scorediff
+
 
             for plid in range(4):
                 print(self.players[plid].score)
