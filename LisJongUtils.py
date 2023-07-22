@@ -1450,11 +1450,43 @@ def machi(handstr_, exposes_):
 
         result.append((newsampler[i], waits))
 
-    # TODO 赤があれば元に戻す
+    # 最初から見ていって、最初に出てきた黒はいを赤に返る
+    newres = []
+    redm_cache = redm_flag
+    reds_cache = reds_flag
+    redp_cache = redp_flag
+
+    for machiform in result:
+        redm_flag = redm_cache
+        reds_flag = reds_cache
+        redp_flag = redp_cache
+
+        newtehai = []
+        for tehai in machiform[0]:
+            newstr = tehai
+            if "5m" in tehai and redm_flag:
+                redm_flag = False
+                needle = tehai.find("5m")
+                newstr = needle_replace(newstr, needle, "0")
+            elif "5s" in tehai and reds_flag:  # m,s,pがいメンツの中には登場しないからelseでよい
+                reds_flag = False
+                needle = tehai.find("5s")
+                newstr = needle_replace(newstr, needle, "0")
+            elif "5p" in tehai and redp_flag:
+                redp_flag = False
+                needle = tehai.find("5p")
+                newstr = needle_replace(newstr, needle, "0")
+            newtehai.append(newstr)
+        newmachi = [newtehai, machiform[1]]
+        newres.append(newmachi)
+
+    return newres
 
 
-    return result
-
+def needle_replace(rawstr_, needle_, replaced_):
+    liststr = list(rawstr_)
+    liststr[needle_] = replaced_
+    return "".join(liststr)
 
 def tileid_from_str(tileidstr_):
     index = 0
@@ -1628,7 +1660,7 @@ if __name__ == '__main__':
     naki = []
     agari = "1p"
 
-    hand = "3s3s4s4s5s5s6s6s7s7s8s9s9s"
+    hand = "3s3s4s4s5s0s6s6s7s7s8s9s9s"
 
     result = machi(hand, [])
 
