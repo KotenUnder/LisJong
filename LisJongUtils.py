@@ -1515,7 +1515,7 @@ def check_call(handstr_, discarded_):
     handlist.sort(key=tileid_from_str)
 
     result = {
-        "Pong":[],
+        "Pon":[],
         "Kan":[],
         "Chii":[]
     }
@@ -1535,7 +1535,7 @@ def check_call(handstr_, discarded_):
 
     #ポンのチェック
     if handlist.count(discarded_) >= 2:
-        result["Pong"].append([discarded_, discarded_])
+        result["Pon"].append([discarded_, discarded_])
 
     if handlist.count(discarded_) >= 3:
         result["Kan"].append([discarded_, discarded_, discarded_])
@@ -1584,7 +1584,20 @@ def disintegrate_hand(handstr_):
     handlist = []
     for i in range(int(len(handstr_) / 2)):
         handlist.append(handstr_[i*2:i*2+2])
-    return  handlist.sort(key=tile_index)
+    return handlist
+
+def logic_tile_recursive(handstr_, known_tiles={}): 
+    # logic_tileを再帰的に呼び出して計算する
+    nowshanten = shanten(handstr_.replace("0", "5"))[0]
+
+    cuttable = {}
+
+    upgrades = logic_tile(handstr_, known_tiles)
+    # それぞれのupgradersに対して、仮想手札を作って、その成績を付け加える
+    for grade in upgrades:
+        virtualhand = None
+
+
 
 
 def logic_tile(handstr_, known_tiles={}):
@@ -1660,9 +1673,9 @@ if __name__ == '__main__':
     naki = []
     agari = "1p"
 
-    hand = "3s3s4s4s5s0s6s6s7s7s8s9s9s"
+    hand = "1m3m5m6m2p3p4s6s8s8s7z7z7z2s"
 
-    result = machi(hand, [])
+    result = logic_tile_recursive(hand)
 
     callmessage = ""
     callmessage += "Ron,"
