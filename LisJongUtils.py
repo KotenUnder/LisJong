@@ -1017,10 +1017,10 @@ def kiriage100(purepoint_):
         return purepoint_ + 100 - (purepoint_ % 100)
 
 
-def shanten(tileliststr_):
+def shanten(tileliststr_, exposes_=[]):
     kokushi_shanten = shanten_kokushi(tileliststr_)
     sevenpairs_shanten = shanten_sevenpairs(tileliststr_)
-    normal_shanten = shanten_normal(tileliststr_)
+    normal_shanten = shanten_normal(tileliststr_) - len(exposes_) * 2
 
     return normal_shanten, sevenpairs_shanten, kokushi_shanten
 
@@ -1039,6 +1039,11 @@ def shanten_kokushi(tileliststr_):
     return  start_shanten
 
 def shanten_sevenpairs(tileliststr_):
+    # 長さが足りない場合はそもそもなし
+    if len(tileliststr_) < 2 * 13:
+        return 6
+
+
     pairs = 0
     # 0 を 5 に書き換える
     tileliststr_ = tileliststr_.replace('0', '5')
@@ -1430,26 +1435,28 @@ def machi(handstr_, exposes_):
 
     # 具体的な待ち牌を付け加える
     result = []
-    for i in range(len(newsampler)):
-        for j in range(len(newsampler[i])):
-            if not newsampler[i][j][0] in "{[(":
-                if len(newsampler[i][j]) == 2:
-                    waits = [newsampler[i][j]]
-                elif newsampler[i][j][0:2] == newsampler[i][j][2:4]:
-                    waits = [newsampler[i][j][0:2]]
-                #数は胃連続
-                elif paicode_next(newsampler[i][j][0:2]) == newsampler[i][j][2:4]:
-                    waits = []
-                    #両面
-                    if paicheck_simple(newsampler[i][j][0:2]):
-                        waits.append(paicode_prev(newsampler[i][j][0:2]))
-                    if paicheck_simple(newsampler[i][j][2:4]):
-                        waits.append(paicode_next(newsampler[i][j][2:4]))
-                elif paicode_next(paicode_next(newsampler[i][j][0:2])) == newsampler[i][j][2:4]:
-                    waits = [paicode_next(newsampler[i][j][0:2])]
+    try:
+        for i in range(len(newsampler)):
+            for j in range(len(newsampler[i])):
+                if not newsampler[i][j][0] in "{[(":
+                    if len(newsampler[i][j]) == 2:
+                        waits = [newsampler[i][j]]
+                    elif newsampler[i][j][0:2] == newsampler[i][j][2:4]:
+                        waits = [newsampler[i][j][0:2]]
+                    #数は胃連続
+                    elif paicode_next(newsampler[i][j][0:2]) == newsampler[i][j][2:4]:
+                        waits = []
+                        #両面
+                        if paicheck_simple(newsampler[i][j][0:2]):
+                            waits.append(paicode_prev(newsampler[i][j][0:2]))
+                        if paicheck_simple(newsampler[i][j][2:4]):
+                            waits.append(paicode_next(newsampler[i][j][2:4]))
+                    elif paicode_next(paicode_next(newsampler[i][j][0:2])) == newsampler[i][j][2:4]:
+                        waits = [paicode_next(newsampler[i][j][0:2])]
 
-        result.append((newsampler[i], waits))
-
+            result.append((newsampler[i], waits))
+    except:
+        print()
     # 最初から見ていって、最初に出てきた黒はいを赤に返る
     newres = []
     redm_cache = redm_flag
@@ -1642,7 +1649,10 @@ def logic_tile(handstr_, known_tiles={}):
 
 def tile_index(tilecode):
     index = 0
-    index += int(tilecode[0])
+    try:
+        index += int(tilecode[0])
+    except:
+        print()
     # 赤なら5扱い
     if tilecode[0] == "0":
         index += 4.5
@@ -1673,9 +1683,11 @@ if __name__ == '__main__':
     naki = []
     agari = "1p"
 
-    hand = "1m3m5m6m2p3p4s6s8s8s7z7z7z2s"
+    hand = '9m9m6p8p'
 
-    result = logic_tile_recursive(hand)
+    expose = ['{6s7s8s}', '{5m6m7m}', '{3s4s5s}']
+
+    result = machi(hand, expose)
 
     callmessage = ""
     callmessage += "Ron,"

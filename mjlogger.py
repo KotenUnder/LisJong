@@ -137,9 +137,6 @@ class DennoJson(MjLogger):
             }))
 
         elif "win" in info and info["win"]["winby"] == "Tsumo":
-            # 最後のアクションは消す
-            del game[-1]
-
             wincase = info["win"]
             wincomment = wincase["score"][1]
             fu = 30

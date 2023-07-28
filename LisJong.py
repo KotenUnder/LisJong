@@ -28,11 +28,11 @@ class PlayersInfo:
         self.newgame()
 
     def newgame(self):
-        self.hands = [""] * 4
+        self.hands = [[], [], [], []]
         self.exposes = [[], [], [], []]
         self.ponds = [[], [], [], []]
-        self.riichi_flag = [""] * 4
-        self.oneshot_flag = [""] * 4
+        self.riichi_flag = [False] * 4
+        self.oneshot_flag = [False] * 4
 
     def sorthand(self):
         for hand in self.hands:
@@ -101,13 +101,28 @@ class Janshi():
 
 
     def draw_called(self):
-        pass
-#        return "Discard", discard_tile, False
+        result = self.engine_called_discard()
+        if not result[1] in self.hand:
+            result = ("Discard", self.hand[0], False)
 
+        # クライアント側手札からの削除処理
+        self.hand.remove(result[1])
+
+        return result
+
+
+    def engine_called_discard(self):
+        return "Discard", self.hand[0], False
 
     def call(self, discarded_, choice_, message_):
         # そのまま投げて、結果を確認してから返す
         action = self.engine_call(discarded_, choice_, message_)
+
+        # 手札からの削除処理
+        if action[0] == "Chii" or action[0] == "Pon" or action[0] == "Kan":
+            for throwaway in action[1]:
+                self.hand.remove(throwaway)
+
         if action[0] == "Ron":
             return action
         elif action[0] == "Chii":
@@ -272,9 +287,26 @@ class KoritsuChu(Janshi):
         if maxri not in self.hand and maxri != draw_pai_:
             maxri = maxri.replace("5", "0")
 
-        print("".join(self.hand) + "," + draw_pai_)
-        print("Discard {0}".format(maxri))
+        #print("".join(self.hand) + "," + draw_pai_)
+        #print("Discard {0}".format(maxri))
         return command, maxri, False
+
+    def engine_called_discard(self):
+        self.sort_hand()
+        # 背理を使って最善を出す
+        hairi = LisJongUtils.logic_tile("".join(self.hand))
+        maxuke = 0
+        maxri = ""
+        for ri in hairi:
+            if hairi[ri] >= maxuke:
+                maxri = ri
+                maxuke = hairi[ri]
+
+        # 5を切ろうとしてなかったらをキル
+        if maxri not in self.hand:
+            maxri = maxri.replace("5", "0")
+
+        return "Discard", maxri, False
 
 
 class Human(Janshi):
@@ -340,6 +372,23 @@ class Human(Janshi):
             return "Chii", choice_["Chii"][0]
         # 椪かちーかだけ
         return "Skip", []
+
+    def engine_called_discard(self):
+        self.sort_hand()
+        # 背理を使って最善を出す
+        hairi = LisJongUtils.logic_tile("".join(self.hand))
+        maxuke = 0
+        maxri = ""
+        for ri in hairi:
+            if hairi[ri] >= maxuke:
+                maxri = ri
+                maxuke = hairi[ri]
+
+        # 5を切ろうとしてなかったらをキル
+        if maxri not in self.hand:
+            maxri = maxri.replace("5", "0")
+
+        return "Discard", maxri, False
 
 
 
@@ -448,7 +497,7 @@ class Table():
         self.deposit = 0
 
         # 名前設定
-        self.players = [KoritsuChu("keyboard"), KoritsuChu("1"), KoritsuChu("2"), KoritsuChu("3")]
+        self.players = [Human("keyboard"), KoritsuChu("1"), KoritsuChu("2"), KoritsuChu("3")]
 
         while True:
             lastgame = self.start_game()
@@ -474,6 +523,10 @@ class Table():
         self.loginfo = {}
 
         self.called_discard_flag = False
+        self.plinfo.newgame()
+
+        gameresult = ""
+
 
         # 灰山生成
         tilepilestr, hashstr = self.create_tilepile()
@@ -497,6 +550,7 @@ class Table():
             self.players[kijun].newgame()
             self.players[kijun].initial_draw(starting_hands[q])
             self.plinfo.hands[kijun] = LisJongUtils.disintegrate_hand(starting_hands[q])
+            self.plinfo.sorthand()
 
 
         #dora 山全体から-5が表、そこから裏、新どら、新どら裏、とマイナスに続く
@@ -537,26 +591,24 @@ class Table():
                 self.loginfo["actions"].append({"action": "draw", "plid": turnplayer, "tile": drawtile_id})
 
                 # shantenへいれる
-                shanten_triple = LisJongUtils.shanten("".join(fullhand).replace('0', '5'))
+                shanten_triple = LisJongUtils.shanten("".join(fullhand).replace('0', '5'), self.plinfo.exposes[turnplayer])
                 # shanten=0なら立直宣言はいも教える
                 fullhand_copy = []
                 riichi_list = []
-                if 0 in shanten_triple or -1 in shanten_triple:
+                # 立直可能チェック　面前で、聴牌か上がり系のみ
+                if len(self.plinfo.exposes[turnplayer]) == 0 and (0 in shanten_triple or -1 in shanten_triple):
                     for tile in fullhand:
                         fullhand_copy.append(tile)
                     # 手札の1種類ずつを外してみて、待ちが発生すればそれに従う
                     for tile in fullhand:
                         if not tile in riichi_list:
                             fullhand_copy.remove(tile)
-                            machiresult = LisJongUtils.machi("".join(fullhand_copy), [])
+                            machiresult = LisJongUtils.machi("".join(fullhand_copy), self.plinfo.exposes[turnplayer])
                             if len(machiresult) > 0:
                                 riichi_list.append(tile)
                             fullhand_copy.append(tile)
 
-                tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, shanten_triple[0] < 0)
-                # ログ保存
-                self.loginfo["actions"].append({"action": "discard", "plid": turnplayer, "tile": tsumo_result[1],
-                                                "riichi": tsumo_result[0] == "Riichi", "tsumogiri": tsumo_result[2]})
+                tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, -1 in shanten_triple)
 
             else:
                 # 自摸なし
@@ -567,13 +619,15 @@ class Table():
 
             # 0commnad, 1hai, 2tsumogiriflag
             if tsumo_result[0] == "Discard" or tsumo_result[0] == "Riichi":
-                # 手札の更新
+                # ログ保存
+                self.loginfo["actions"].append({"action": "discard", "plid": turnplayer, "tile": tsumo_result[1],
+                                                "riichi": tsumo_result[0] == "Riichi", "tsumogiri": tsumo_result[2]})
+                # サーバー目線で手札の更新
                 if not tsumo_result[2]:
-                    try:
-                        self.plinfo.hands[turnplayer].remove(tsumo_result[1])
+                    self.plinfo.hands[turnplayer].remove(tsumo_result[1])
+                    if not self.called_discard_flag:
                         self.plinfo.hands[turnplayer].append(drawtile_id)
-                    except:
-                        print(self.plinfo)
+                    self.plinfo.sorthand()
 
                 # ロンがあるかどうかを見る
                 callret = [[],[],[],[]]
@@ -612,11 +666,15 @@ class Table():
                 # ロンがない時点で、立直は成立する, そうでなく自摸ぎったなら、その人の一発フラグを消す
                 if tsumo_result[0] == "Riichi":
                     self.players[turnplayer].riichi_flag = True
+                    self.plinfo.riichi_flag[turnplayer] = True
                     self.players[turnplayer].oneshot_flag = True
+                    self.plinfo.oneshot_flag[turnplayer] = True
                     self.players[turnplayer].score -= 1000
+                    self.plinfo.scores[turnplayer] -= 1000
                     self.deposit += 1
                 else:
                     self.players[turnplayer].oneshot_flag = False
+                    self.plinfo.riichi_flag[turnplayer] = False
 
                 # ロンがなければ、次はポンを調べる
                 called = ""
@@ -646,9 +704,13 @@ class Table():
 
                 # 泣きがあれば、自摸なしにその人のターンとする
                 if len(called) > 0:
+                    self.called_discard_flag = True
                     turnplayer = caller
+                    # 全員の一発フラグを消す
+                    self.plinfo.oneshot_flag = [False] * 4
 
                 else:
+                    self.called_discard_flag = False
                     turnplayer = (turnplayer + 1) % 4
                     self.next_tsumo_id += 1
 
