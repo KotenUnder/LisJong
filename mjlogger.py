@@ -80,6 +80,7 @@ class DennoJson(MjLogger):
                     "defen":iniscorelist,
                     "baopai":lisjong_to_tenhou(info["dora1_indicator"]),
                     "shoupai":inihandlist,
+                    "wall":info["wall"]
                 }
             }
 

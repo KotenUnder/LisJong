@@ -161,8 +161,9 @@ class Janshi():
     def inform_newdora(self, tilecode_):
         self.doras.append(tilecode_)
 
-    def others_discard(self, relid_, discarded_, tsumogiri_=False, riichi_=False, caller_relid_=-1,
+    def inform_discard(self, relid_, discarded_, tsumogiri_=False, riichi_=False, caller_relid_=-1,
                        exposed_=[]):
+
         self.ponds[relid_].append((discarded_, tsumogiri_, riichi_, caller_relid_))
         # 鳴いた人がいる場合、その処理を追加
         if caller_relid_ >= 0:
@@ -391,6 +392,59 @@ class Human(Janshi):
         return "Discard", maxri, False
 
 
+class Saikyochan(KoritsuChu):
+    def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
+        # 役牌だけはなく
+        # ツモ可能であれば、すぐにあがる
+        if tsumo_:
+            return "Tsumo", False, False
+
+        if self.riichi_flag:
+            return "Discard", draw_pai_, True
+
+        # 立直可能であれば立直する
+        if riichi_:
+            command = "Riichi"
+        else:
+            command = "Discard"
+
+        self.sort_hand()
+
+        knowns = []
+        for p in range(4):
+            for discard in self.ponds[p]:
+                knowns.append(discard[0])
+
+        # 背理を使って最善を出す
+        hairi = LisJongUtils.logic_tile2("".join(self.hand)+draw_pai_, knowns)
+        maxuke = 0
+        maxri = ""
+        for ri in hairi:
+            if hairi[ri] >= maxuke:
+                maxri = ri
+                maxuke = hairi[ri]
+
+        # 5を切ろうとしてなかったらをキル
+        if maxri not in self.hand and maxri != draw_pai_:
+            maxri = maxri.replace("5", "0")
+
+        #print("".join(self.hand) + "," + draw_pai_)
+        #print("Discard {0}".format(maxri))
+        return command, maxri, False
+
+
+    def engine_call(self, discarded_, choice_, message_):
+        # 役牌だけはなく
+        if message_.startswith("Ron"):
+            return "Ron", []
+
+
+        if len(choice_["Pon"]) > 0:
+            pontarget = choice_["Pon"][0]
+            if pontarget == "5z" or pontarget == "6z" or pontarget == "7z":
+                return "Pon", choice_["Pon"][0]
+
+        return "Skip", []
 
 class LisJongServer():
     def __init__(self):
@@ -459,6 +513,8 @@ class LisJongServer():
                 break
 
 
+
+
 class Table():
 
     def __init__(self):
@@ -497,7 +553,7 @@ class Table():
         self.deposit = 0
 
         # 名前設定
-        self.players = [Human("keyboard"), KoritsuChu("1"), KoritsuChu("2"), KoritsuChu("3")]
+        self.players = [Saikyochan("keyboard"), KoritsuChu("1"), KoritsuChu("2"), KoritsuChu("3")]
 
         while True:
             lastgame = self.start_game()
@@ -579,6 +635,7 @@ class Table():
         self.loginfo["dora1_indicator"] = self.wall[POSITION_DORA]
         self.loginfo["dora1"] = LisJongUtils.dora_from_indicator(self.wall[POSITION_DORA])
         self.loginfo["actions"] = []
+        self.loginfo["wall"] = tilepilestr
 
         while self.next_tsumo_id <= TILE_TOTAL - DEADWALL_COUNT - self.kong_count:
             # 現在のターンプレイヤーに引かせる
@@ -698,7 +755,7 @@ class Table():
 
                 # 何もなしに捨てはいが確定している???
                 for qlid in range(4):
-                    self.players[qlid].others_discard((turnplayer - qlid) % 4, tsumo_result[1], tsumo_result[2], tsumo_result[0] == "Riichi",
+                    self.players[qlid].inform_discard((turnplayer - qlid) % 4, tsumo_result[1], tsumo_result[2], tsumo_result[0] == "Riichi",
                                                       -1 if len(called) == 0 else (caller - qlid) % 4, called)
 
 
@@ -734,7 +791,7 @@ class Table():
             score = LisJongUtils.calculate_score("".join(self.players[turnplayer].hand),
                                                  self.players[turnplayer].exposes[0],
                                                  drawtile_id, True, turnplayer == self.game,
-                                                 WIND_TABLE[self.game], WIND_TABLE[turnplayer],
+                                                 WIND_TABLE[self.round], WIND_TABLE[mjlogger.relativize(turnplayer, self.game)],
                                                  self.players[turnplayer].riichi_flag,
                                                  self.players[turnplayer].oneshot_flag, self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
                                                  False, self.dora, self.underneath_dora)
@@ -755,7 +812,7 @@ class Table():
                         self.players[plid].score -= diffpoint
                     else:
                         scorediff[plid] = 3 * diffpoint + self.deposit * 1000
-                        self.players[plid].score += scorediff[plid]
+                        self.players[plid].score += 3 * diffpoint
             else:
                 diffpoint_child = int(score[0].split("-")[0]) + self.extra * 100
                 diffpoint_dealer = int(score[0].split("-")[1]) + self.extra * 100
@@ -800,7 +857,7 @@ class Table():
             score = LisJongUtils.calculate_score("".join(self.players[winner_id].hand),
                                                  self.players[winner_id].exposes[0],
                                                  tsumo_result[1], False, winner_id == self.game,
-                                                 WIND_TABLE[self.game], WIND_TABLE[winner_id],
+                                                 WIND_TABLE[self.round], WIND_TABLE[mjlogger.relativize(winner_id, self.game)],
                                                  self.players[winner_id].riichi_flag,
                                                 self.players[winner_id].oneshot_flag, self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
                                                  False, self.dora, self.underneath_dora)
@@ -944,6 +1001,11 @@ class Table():
         return True
 
 
+    def dealer_repeat_check(self, dealer_win_, dealer_tenpai_):
+        # 親が上がっているか、聴牌しているなら連荘条件を満たす
+        return dealer_win_ or dealer_tenpai_
+
+
 
     #
     # 返り値：山コード　ハッシュ
@@ -978,6 +1040,7 @@ class Table():
 
         #中身を文字列としてつなぎ合わせる
         piletile_str = "".join(tile_pile) + "_" + str(datetime.datetime.now())
+        #piletile_str = "7z2m2z8p5m7p2z5z1p1m3p5s4s7m3s8p8s9s2s9p3m4z5p4z1p4s7z8m2m6s2z1z9m6z1p6m8p5z1z5m7s7m9s6p8s9s4m1z4p3z3m3m7p9p8s2p6s7z2m2s7s6p2z3s4s9s7z9m7m2p5p1m9p6z6m4p7s6m7m9p6m0p8m4z4m7p1s3p6z1z7s6s9m6z4m5z4s4z3p2p5p1s4m5z8s1p4p6p3z2p6p9m0s5m8m5s3s2m3s1m5s8p1m3z3m8m0m3z2s6s1s2s4p3p1s7p"
         return piletile_str, hashlib.sha512(piletile_str.encode("utf-8")).hexdigest()
 
     def shuffle(self, tilepile_, seed_):

@@ -248,18 +248,21 @@ def calculate_score_one(closedhandstr_, exposedstrlist_, winningpai_, winbyself_
     #ほんいつけい
     if yakucheck_semiflush(closedhandstr_, exposedstrlist_, winningpai_):
         if len(exposedstrlist_) > 0:
-            yaku_list.append("Semi-Flush")
-        else:
             yaku_list.append("Semi-Flush (open)")
+        else:
+            yaku_list.append("Semi-Flush")
     elif yakucheck_flush(closedhandstr_, exposedstrlist_, winningpai_):
         if len(exposedstrlist_) > 0:
-            yaku_list.append("Flush")
-        else:
             yaku_list.append("Flush (open)")
+        else:
+            yaku_list.append("Flush")
 
     # 一気通貫
     if yakucheck_straight(closedhandstr_, exposedstrlist_, winningpai_):
-        yaku_list.append("Straight")
+        if len(exposedstrlist_) > 0:
+            yaku_list.append("Straight (open)")
+        else:
+            yaku_list.append("Straight")
 
     # といとい
     if yakucheck_toitoi(closedhandstr_, exposedstrlist_, winningpai_):
@@ -951,6 +954,7 @@ def debuff(melds_):
 def getpoints(fu_, han_, is_dealer_, winbyself_):
 
     comment = ""
+    fuhan = ""
 
     if str(fu_).startswith("Limit"):
         # 何倍役満か
@@ -969,11 +973,13 @@ def getpoints(fu_, han_, is_dealer_, winbyself_):
             purescore = fu_
         else:
             purescore = fu_ + 10 - (fu_ % 10)
+        fuhan = "{}fu{}han".format(purescore, han_)
+
         #場ぞろ
         purescore *= 4
+
         #潘
         if han_ < 6:
-            comment = "{}fu{}han".format(int(purescore/4), han_)
             purescore = purescore * (2 ** han_)
 
         # 2000異常なら満貫扱い
@@ -1593,18 +1599,51 @@ def disintegrate_hand(handstr_):
         handlist.append(handstr_[i*2:i*2+2])
     return handlist
 
-def logic_tile_recursive(handstr_, known_tiles={}): 
-    # logic_tileを再帰的に呼び出して計算する
-    nowshanten = shanten(handstr_.replace("0", "5"))[0]
+def logic_tile2(handstr_, known_tiles={}):
+    # 並び替え
+    handlist = tile_disintegrate(handstr_.replace("0", "5"))
 
-    cuttable = {}
+    # シャンテン数が向上する巣手配
+    upgraders = {}
 
-    upgrades = logic_tile(handstr_, known_tiles)
-    # それぞれのupgradersに対して、仮想手札を作って、その成績を付け加える
-    for grade in upgrades:
-        virtualhand = None
+    # 名に切る問題だが、まずは現在のシャンテン数を出す
+    nowshanten = shanten(handstr_)[0]
 
+    # キル杯ごとに、何を積もればシャンテン数が上がるのかを計算する
+    for i in range(len(handlist)):
+        # 2回目以降の出現なら次へ
+        if handlist.index(handlist[i]) != i:
+            continue
 
+        upgraders[handlist[i]] = 0
+
+        for tsumo in TILE_TABLE:
+            # 新しい手配リストを作って、そのシャンテン数と有効杯の枚数を求める
+            if handlist.count(tsumo) >= 4:
+                continue
+
+            temphand = [tsumo]
+            for j in range(len(handlist)):
+                if i != j:
+                    temphand.append(handlist[j])
+            # この状態でシャンテン数を出す
+            temphand.sort(key=tile_index)
+            nextshanten = shanten("".join(temphand))[0]
+            # シャンテン数が減っているなら、記録する
+            if nextshanten < nowshanten:
+                upgraders[handlist[i]] += 4
+                # 既に使用済みがあるならその分減らす
+                if tsumo in known_tiles:
+                    upgraders[handlist[i]] -= known_tiles.count(tsumo)
+                upgraders[handlist[i]] -= handlist.count(tsumo)
+
+    # 役牌だけ+1する
+    yakuhai = ["5z", "6z", "7z"]
+    for yakuh in yakuhai:
+        if yakuh in upgraders:
+            upgraders[yakuh] -= 1
+
+    return upgraders
 
 
 def logic_tile(handstr_, known_tiles={}):
@@ -1675,6 +1714,40 @@ def tile_disintegrate(handstr_):
 
     return handlist
 
+
+def safety_zone(pond_, all_=[]):
+    safety = []
+    # 現物
+    safety.append([])
+    for tile in pond_:
+        if tile not in safety[0]:
+            safety[0].append(tile)
+
+    # ほぼ安全なもの
+    # 1枚以上切れた字牌、スジあり1-9、
+    safety.append([])
+    for tile in safety[0]:
+        if tile[1] != "z":
+            linelist = []
+            if int(tile[0]) > 3 and int(tile[0]) < 7:
+                lowline = str(int(tile[0])-3) + tile[1]
+                linelist.append(lowline)
+                highline = str(int(tile[0])+3) + tile[1]
+                linelist.append(highline)
+            for line in linelist:
+                if not line in safety[0] and not line in safety[1]:
+                    safety[1].append(line)
+
+    if "2m" in safety[0] and "8m" in safety[0]:
+        safety[1].append("5m")
+    if "2p" in safety[0] and "8p" in safety[0]:
+        safety[1].append("5p")
+    if "2s" in safety[0] and "8s" in safety[0]:
+        safety[1].append("5s")
+
+    return safety
+
+
 if __name__ == '__main__':
 
     problemfile = open("p_normal_10000.txt")
@@ -1683,15 +1756,11 @@ if __name__ == '__main__':
     naki = []
     agari = "1p"
 
-    hand = '9m9m6p8p'
+    hand = '1m3m4m8m8m3p5p7p3s4s4s5s6s8s'
 
-    expose = ['{6s7s8s}', '{5m6m7m}', '{3s4s5s}']
+    pond = ["1m", "9m"]
 
-    result = machi(hand, expose)
-
-    callmessage = ""
-    callmessage += "Ron,"
-    callmessage += "Chi,"
+    safe = safety_zone(pond)
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
