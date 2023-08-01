@@ -106,6 +106,16 @@ class DennoJson(MjLogger):
                         "dapai":{"l":relativize(action["plid"], id_offset), "p":discarded}
                     }
                 )
+            elif action["action"] == "call":
+                # 左なら-, = +の記号
+                fulou_mark_table = ["", "+", "=", "-"]
+                relative_discarder = relativize(action["discarder"], action["caller"])
+                form = lisjong_to_tenhou(action["exposed"].strip("{}")) + fulou_mark_table[relative_discarder]
+                game.append(
+                    {
+                        "fulou":{"l":relativize(action["caller"], id_offset), "m":form}
+                    }
+                )
 
 
         # 対局結果
@@ -277,6 +287,7 @@ YAKU_DICTIONARY = {
     "Chanta": [2, "混全帯么九"],
     "Chanta (open)":[1, "混全帯么九"],
     "Straight": [2, "一気通貫"],
+    "Straight (open)": [1, "一気通貫"],
     "3 Color Straights": [2, "三色同順"],
     "3 Concealed Triplets": [2, "三暗刻"],
     "3 Color Triplets":[2, "三色同刻"],

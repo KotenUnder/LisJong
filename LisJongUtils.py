@@ -53,7 +53,7 @@ def calculate_fu(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is_de
 
     #上がり方につく符
     for elem in closedhandstr_:
-        if elem[0] != "(" and elem[0] != "[":
+        if elem[0] != "(" and elem[0] != "[" and elem[0] != "{":
             #頭なら2
             if len(elem) == 2:
                 fu += 2
@@ -423,7 +423,12 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
     for waits in machiform:
         if winningpai_.replace("0", "5") in waits[1]:
             # 結果表示
-            result = calculate_score_one(waits[0], exposedstrlist_, winningpai_,
+            # 面前部分作成
+            menzenpart = []
+            for meld in waits[0]:
+                if not meld.startswith("{"):
+                    menzenpart.append(meld)
+            result = calculate_score_one(menzenpart, exposedstrlist_, winningpai_,
                                          winbyself_, is_dealer_, prevailingwind_, ownwind_,
                                          riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_)
 
@@ -1026,7 +1031,7 @@ def kiriage100(purepoint_):
 def shanten(tileliststr_, exposes_=[]):
     kokushi_shanten = shanten_kokushi(tileliststr_)
     sevenpairs_shanten = shanten_sevenpairs(tileliststr_)
-    normal_shanten = shanten_normal(tileliststr_) - len(exposes_) * 2
+    normal_shanten = shanten_normal(tileliststr_, exposes_)
 
     return normal_shanten, sevenpairs_shanten, kokushi_shanten
 
@@ -1064,7 +1069,7 @@ def shanten_sevenpairs(tileliststr_):
 
     return 6 - pairs
 
-def shanten_normal(handstr_):
+def shanten_normal(handstr_, exposed_=[]):
     # m p sで区切る
     manzu = ""
     pinzu = ""
@@ -1087,9 +1092,9 @@ def shanten_normal(handstr_):
     honors = encode_tilescape(honors)
 
     # 頭なしの場合
-    headless_score = optimize_melds(manzu, pinzu, souzu, honors)
-
+    headless_score = optimize_melds(manzu, pinzu, souzu, honors, 4 - len(exposed_))
     max_score = headless_score
+
     # 頭を順に仮定する。この場合はscoreに+1して比較する
     numbers = [manzu, pinzu, souzu, honors]
     for i in range(4):
@@ -1097,12 +1102,12 @@ def shanten_normal(handstr_):
             if int(numbers[i][id]) >= 2:
                 numbers[i] = numbers[i][0:id] + str(int(numbers[i][id]) - 2) + numbers[i][id+1:]
                 # この状態で解析
-                tempscore = optimize_melds(numbers[0], numbers[1], numbers[2], numbers[3]) + 1
+                tempscore = optimize_melds(numbers[0], numbers[1], numbers[2], numbers[3], 4 - len(exposed_)) + 1
                 max_score =max(max_score, tempscore)
                 # 元に戻す
                 numbers[i] = numbers[i][0:id] + str(int(numbers[i][id]) + 2) + numbers[i][id+1:]
 
-    return 8 - max_score
+    return 8 - max_score - len(exposed_) * 2
 
 
 def encode_tilescape(tileliststr_):
@@ -1128,7 +1133,7 @@ def disintegrate_code(colorcode_):
     return blocks
 
 
-def optimize_melds(m_code, p_code, s_code, h_code):
+def optimize_melds(m_code, p_code, s_code, h_code, max_mentsu=4):
     # それぞれでblocksを作って合体させる
     blocks = []
     blocks.extend(disintegrate_code(m_code))
@@ -1169,11 +1174,11 @@ def optimize_melds(m_code, p_code, s_code, h_code):
         completed_meld += meld_candidate[len(blocks)][0]
         candidate += meld_candidate[len(blocks)][1]
 
-        if completed_meld > 4:
-            completed_meld = 4
+        if completed_meld > max_mentsu:
+            completed_meld = max_mentsu
             candidate = 0
-        if (completed_meld + candidate) > 4:
-            candidate = 4 - completed_meld
+        if (completed_meld + candidate) > max_mentsu:
+            candidate = max_mentsu - completed_meld
 
         return completed_meld * 2 + candidate
 
@@ -1753,14 +1758,14 @@ if __name__ == '__main__':
     problemfile = open("p_normal_10000.txt")
 
     hand = ["(1p2p3p)", "(4p0p6p)", "1p1p", "(7p8p9p)", "[9p9p]"]
-    naki = []
+    naki = ["{1p1p1p}"]
     agari = "1p"
 
-    hand = '1m3m4m8m8m3p5p7p3s4s4s5s6s8s'
+    hand = '5m5m3p4p5p4s5s6s6s7s8s1p1p1p'
 
     pond = ["1m", "9m"]
 
-    safe = safety_zone(pond)
+    safe = shanten_normal(hand, [])
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 

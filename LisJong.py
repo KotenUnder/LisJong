@@ -63,6 +63,10 @@ class Janshi():
         self.riichi_flag = False
         self.oneshot_flag = False
 
+        self.newgame_additional()
+
+    def newgame_additional(self):
+        pass
 
     def initial_draw(self, initial13str_):
         self.hand = []
@@ -76,13 +80,10 @@ class Janshi():
         if command == "Tsumo":
             return "Tsumo", draw_pai_, tsumogiri_flag
 
-        # 立直中で上がらないあれば自摸切り絶対
-        if self.riichi_flag:
-            tsumogiri_flag = True
-
 
         # 自摸切り判断
         if not discard_tile in self.hand:
+            discard_tile = draw_pai_
             tsumogiri_flag = True
 
         # 自摸切りでなく、ちゃんとあるばあいに
@@ -92,10 +93,15 @@ class Janshi():
                 self.hand[discard_id] = draw_pai_
 
         # 自分が立直中なら、command修正
+        # 立直中で上がらないあれば自摸切り絶対
         if self.riichi_flag:
             command = "Discard"
             discard_tile = draw_pai_
             tsumogiri_flag = True
+
+        # 立直になる場合
+        if command == "Riichi":
+            self.riichi_flag = True
 
         return command, discard_tile, tsumogiri_flag
 
@@ -121,7 +127,10 @@ class Janshi():
         # 手札からの削除処理
         if action[0] == "Chii" or action[0] == "Pon" or action[0] == "Kan":
             for throwaway in action[1]:
-                self.hand.remove(throwaway)
+                try:
+                    self.hand.remove(throwaway)
+                except:
+                    print("Error")
 
         if action[0] == "Ron":
             return action
@@ -393,6 +402,11 @@ class Human(Janshi):
 
 
 class Saikyochan(KoritsuChu):
+
+
+    def newgame_additional(self):
+        self.ponflag = True
+
     def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         # 役牌だけはなく
         # ツモ可能であれば、すぐにあがる
@@ -441,7 +455,8 @@ class Saikyochan(KoritsuChu):
 
         if len(choice_["Pon"]) > 0:
             pontarget = choice_["Pon"][0]
-            if pontarget == "5z" or pontarget == "6z" or pontarget == "7z":
+            if self.ponflag:
+                self.ponflag = False
                 return "Pon", choice_["Pon"][0]
 
         return "Skip", []
@@ -565,7 +580,7 @@ class Table():
 
         # 最終的な結果作成
         result = {
-            "score":[self.players[plid].score for plid in range(4)],
+            "score":[self.plinfo.scores[plid] for plid in range(4)],
             "rank":[1,2,3,4],
             "point":[0,0,0,0]
         }
@@ -630,12 +645,14 @@ class Table():
         self.loginfo["round"] = self.round
         self.loginfo["game"] = self.game
         self.loginfo["deposit"] = self.deposit
-        self.loginfo["initial_score"] = [self.players[plid].score for plid in range(4)]
-        self.loginfo["initial_hand"] = ["".join(self.players[plid].hand) for plid in range(4)]
+        self.loginfo["initial_score"] = [self.plinfo.scores[plid] for plid in range(4)]
+        self.loginfo["initial_hand"] = ["".join(self.plinfo.hands[plid]) for plid in range(4)]
         self.loginfo["dora1_indicator"] = self.wall[POSITION_DORA]
         self.loginfo["dora1"] = LisJongUtils.dora_from_indicator(self.wall[POSITION_DORA])
         self.loginfo["actions"] = []
         self.loginfo["wall"] = tilepilestr
+
+        print(tilepilestr)
 
         while self.next_tsumo_id <= TILE_TOTAL - DEADWALL_COUNT - self.kong_count:
             # 現在のターンプレイヤーに引かせる
@@ -653,7 +670,8 @@ class Table():
                 fullhand_copy = []
                 riichi_list = []
                 # 立直可能チェック　面前で、聴牌か上がり系のみ
-                if len(self.plinfo.exposes[turnplayer]) == 0 and (0 in shanten_triple or -1 in shanten_triple):
+                if len(self.plinfo.exposes[turnplayer]) == 0 and (0 in shanten_triple or -1 in shanten_triple) and\
+                        not self.plinfo.riichi_flag[turnplayer]:
                     for tile in fullhand:
                         fullhand_copy.append(tile)
                     # 手札の1種類ずつを外してみて、待ちが発生すればそれに従う
@@ -664,6 +682,9 @@ class Table():
                             if len(machiresult) > 0:
                                 riichi_list.append(tile)
                             fullhand_copy.append(tile)
+
+                if -1 in shanten_triple:
+                    pass
 
                 tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, -1 in shanten_triple)
 
@@ -694,10 +715,11 @@ class Table():
                         machiresult = LisJongUtils.machi("".join(self.plinfo.hands[plid]), self.plinfo.exposes[plid])
                         for waits in machiresult:
                             # TODO 本来はフリテンチェック、役ありチェックが必要
-                            if str(tsumo_result[1]) in waits[1]:
+                            if str(tsumo_result[1].replace("0", "5")) in waits[1]:
                                 callmessage += "Ron,"
-                        # 鳴く人がいれば、turnplayerから逆順に確認する
-                        if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT:
+                                break
+                        # 鳴く人がいれば、turnplayerから逆順に確認する　条件：残りはいがある、立直していない
+                        if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT and not self.plinfo.riichi_flag[plid]:
                             calla = LisJongUtils.check_call("".join(self.plinfo.hands[plid]), tsumo_result[1])
                             # 次のプレイヤーのみチー可能
                             if plid == (turnplayer + 1) % 4 and len(calla["Chii"]) > 0:
@@ -708,9 +730,9 @@ class Table():
                             if len(calla["Kan"]) > 0:
                                 callmessage += "Kan({})".format(",".join(calla["Kan"][0]))
 
-                            # messageがあれば送信
-                            if len(callmessage) > 0:
-                                callret[plid] = self.players[plid].call(tsumo_result[1], calla, callmessage)
+                        # messageがあれば送信
+                        if len(callmessage) > 0:
+                            callret[plid] = self.players[plid].call(tsumo_result[1], calla, callmessage)
 
                 # 次のプレイヤーから見て、ロンがあれば終了
                 for offset in range(1, 4, 1):
@@ -722,16 +744,12 @@ class Table():
 
                 # ロンがない時点で、立直は成立する, そうでなく自摸ぎったなら、その人の一発フラグを消す
                 if tsumo_result[0] == "Riichi":
-                    self.players[turnplayer].riichi_flag = True
                     self.plinfo.riichi_flag[turnplayer] = True
-                    self.players[turnplayer].oneshot_flag = True
                     self.plinfo.oneshot_flag[turnplayer] = True
-                    self.players[turnplayer].score -= 1000
                     self.plinfo.scores[turnplayer] -= 1000
                     self.deposit += 1
                 else:
-                    self.players[turnplayer].oneshot_flag = False
-                    self.plinfo.riichi_flag[turnplayer] = False
+                    self.plinfo.oneshot_flag[turnplayer] = False
 
                 # ロンがなければ、次はポンを調べる
                 called = ""
@@ -749,9 +767,16 @@ class Table():
                             self.players[p].inform_call((turnplayer - p) % 4, tsumo_result[1],
                                                         (caller - p) % 4, callret[caller][0], called)
 
+                        self.loginfo["actions"].append({
+                            "action":"call", "caller":caller, "discarder":turnplayer,
+                            "discarded":tsumo_result[1],
+                            "exposed":called, "voice":callret[caller][0]
+                        })
+
                         # 手配からさらしたぶんを削除
                         for placeid in range(len(callret[caller][1])):
-                            self.plinfo.hands[caller].remove(callret[caller][1][placeid])
+                                self.plinfo.hands[caller].remove(callret[caller][1][placeid])
+                        break
 
                 # 何もなしに捨てはいが確定している???
                 for qlid in range(4):
@@ -788,12 +813,12 @@ class Table():
         # gameresultによる分岐
         if gameresult.startswith("Tsumo"):
             # 点数計算をする
-            score = LisJongUtils.calculate_score("".join(self.players[turnplayer].hand),
-                                                 self.players[turnplayer].exposes[0],
+            score = LisJongUtils.calculate_score("".join(self.plinfo.hands[turnplayer]),
+                                                 self.plinfo.exposes[turnplayer],
                                                  drawtile_id, True, turnplayer == self.game,
                                                  WIND_TABLE[self.round], WIND_TABLE[mjlogger.relativize(turnplayer, self.game)],
-                                                 self.players[turnplayer].riichi_flag,
-                                                 self.players[turnplayer].oneshot_flag, self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                 self.plinfo.riichi_flag[turnplayer],
+                                                 self.plinfo.oneshot_flag[turnplayer], self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
                                                  False, self.dora, self.underneath_dora)
 
             print(score)
@@ -809,32 +834,32 @@ class Table():
                 for plid in range(4):
                     if plid != turnplayer:
                         scorediff[plid] = - diffpoint
-                        self.players[plid].score -= diffpoint
+                        self.plinfo.scores[plid] -= diffpoint
                     else:
                         scorediff[plid] = 3 * diffpoint + self.deposit * 1000
-                        self.players[plid].score += 3 * diffpoint
+                        self.plinfo.scores[plid] += 3 * diffpoint
             else:
                 diffpoint_child = int(score[0].split("-")[0]) + self.extra * 100
                 diffpoint_dealer = int(score[0].split("-")[1]) + self.extra * 100
                 for plid in range(4):
                     if plid == turnplayer:
                         scorediff[plid] = 2*diffpoint_child + diffpoint_dealer + self.deposit*1000
-                        self.players[plid].score += 2*diffpoint_child + diffpoint_dealer
+                        self.plinfo.scores[plid] += 2*diffpoint_child + diffpoint_dealer
                     elif plid == self.game:
                         scorediff[plid] = - diffpoint_dealer
-                        self.players[plid].score -= diffpoint_dealer
+                        self.plinfo.scores[plid] -= diffpoint_dealer
                     else:
                         scorediff[plid] = - diffpoint_child
-                        self.players[plid].score -= diffpoint_child
+                        self.plinfo.scores[plid] -= diffpoint_child
 
-            self.players[turnplayer].score += 1000*self.deposit
+            self.plinfo.scores[plid] += 1000*self.deposit
             self.deposit = 0
 
             # 上がりのログ保存
             self.loginfo["win"] = {
                 "winby":"Tsumo",
                 "winner":turnplayer,
-                "hand":"".join(self.players[turnplayer].hand),"exposed":self.players[turnplayer].exposes[0],
+                "hand":"".join(self.plinfo.hands[turnplayer]),"exposed":self.plinfo.exposes[turnplayer],
                 "winning_tile":drawtile_id,
                 "score":score
             }
@@ -843,7 +868,7 @@ class Table():
 
 
             for plid in range(4):
-                print(self.players[plid].score)
+                print(self.plinfo.scores[plid])
 
             if turnplayer == self.game:
                 return self.renchan()
@@ -854,26 +879,26 @@ class Table():
             # 点数計算
             payer_id = int(gameresult[4])
             winner_id = int(gameresult[6])
-            score = LisJongUtils.calculate_score("".join(self.players[winner_id].hand),
-                                                 self.players[winner_id].exposes[0],
+            score = LisJongUtils.calculate_score("".join(self.plinfo.hands[winner_id]),
+                                                 self.plinfo.exposes[winner_id],
                                                  tsumo_result[1], False, winner_id == self.game,
                                                  WIND_TABLE[self.round], WIND_TABLE[mjlogger.relativize(winner_id, self.game)],
-                                                 self.players[winner_id].riichi_flag,
-                                                self.players[winner_id].oneshot_flag, self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                 self.plinfo.riichi_flag[winner_id],
+                                                self.plinfo.oneshot_flag[winner_id], self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
                                                  False, self.dora, self.underneath_dora)
 
             print(score)
             diffpoint = int(score[0]) + self.extra * 300
-            self.players[payer_id].score -= diffpoint
-            self.players[winner_id].score += diffpoint
+            self.plinfo.scores[payer_id] -= diffpoint
+            self.plinfo.scores[payer_id] += diffpoint
 
-            self.players[winner_id].score += 1000*self.deposit
+            self.plinfo.scores[payer_id] += 1000*self.deposit
 
             # 上がりのログ保存
             self.loginfo["win"] = {
                 "winby":"Ron",
                 "winner":winner_id, "payer":payer_id,
-                "hand":"".join(self.players[winner_id].hand),"exposed":self.players[winner_id].exposes[0],
+                "hand":"".join(self.plinfo.hands[winner_id]),"exposed":self.plinfo.exposes[winner_id],
                 "winning_tile":tsumo_result[1],
                 "score":score
             }
@@ -892,10 +917,10 @@ class Table():
             self.deposit = 0
 
             for plid in range(4):
-                print(self.players[plid].score)
+                print(self.plinfo.scores[plid])
 
-            if winner_id == self.game:
-                return self.renchan()
+            if winner_id == self.game and not self.check_negative_score():
+                return True
             else:
                 return self.next_game()
 
@@ -904,7 +929,7 @@ class Table():
             tempaier_list = []
             noten_list = []
             for plid in range(4):
-                shanten_triple = LisJongUtils.shanten("".join(self.players[plid].hand))
+                shanten_triple = LisJongUtils.shanten("".join(self.plinfo.hands[plid]))
                 if 0 in shanten_triple:
                     tempaier_list.append(plid)
                 else:
@@ -918,9 +943,9 @@ class Table():
             scorediff = [0] * 4
             if len(tempaier_list) > 0 and len(tempaier_list) < 4:
                 for tempaier in tempaier_list:
-                    self.players[tempaier].score += int(TEMPAI_ADVANTAGE / len(tempaier_list))
+                    self.plinfo.scores[tempaier] += int(TEMPAI_ADVANTAGE / len(tempaier_list))
                 for notener in noten_list:
-                    self.players[notener].score -= int(TEMPAI_ADVANTAGE / len(noten_list))
+                    self.plinfo.scores[notener] -= int(TEMPAI_ADVANTAGE / len(noten_list))
                 for plid in range(4):
                     if plid in tempaier_list:
                         scorediff[plid] = int(TEMPAI_ADVANTAGE / len(tempaier_list))
@@ -940,26 +965,21 @@ class Table():
 
             self.loginfo["draw"] = {
                 "name":"Goulash",
-                "hand":["".join(self.players[qlid].hand) for qlid in range(4)]
+                "hand":["".join(self.plinfo.hands[qlid]) for qlid in range(4)]
             }
             self.loginfo["score_diff"] = scorediff
 
             return True
 
 
-    def check_continue_byscore(self):
+    # 箱下がいるならTrue
+    def check_negative_score(self):
         # 箱下がいれば終了
         for p in range(4):
-            if self.players[p].score < 0:
-                return False
+            if self.plinfo.scores[p] < 0:
+                return True
 
-        # トップが異常なら終了
-        okagoe_flag = False
-        for plid in range(4):
-            if self.players[plid].score > self.score_threshold:
-                okagoe_flag = True
-
-        return okagoe_flag
+        return False
 
 
     # next gameがあうときはTrueを返す
@@ -969,7 +989,7 @@ class Table():
 
         # 箱下がいれば終了
         for p in range(4):
-            if self.players[p].score < 0:
+            if self.plinfo.scores[p] < 0:
                 return False
 
         # オーラスの場合
@@ -978,7 +998,7 @@ class Table():
             # 誰かが超えているか
             okagoe_flag = False
             for plid in range(4):
-                if self.players[plid].score > self.score_threshold:
+                if self.plinfo.scores[plid] > self.score_threshold:
                     okagoe_flag = True
                     break
             if okagoe_flag:
@@ -1040,7 +1060,7 @@ class Table():
 
         #中身を文字列としてつなぎ合わせる
         piletile_str = "".join(tile_pile) + "_" + str(datetime.datetime.now())
-        #piletile_str = "7z2m2z8p5m7p2z5z1p1m3p5s4s7m3s8p8s9s2s9p3m4z5p4z1p4s7z8m2m6s2z1z9m6z1p6m8p5z1z5m7s7m9s6p8s9s4m1z4p3z3m3m7p9p8s2p6s7z2m2s7s6p2z3s4s9s7z9m7m2p5p1m9p6z6m4p7s6m7m9p6m0p8m4z4m7p1s3p6z1z7s6s9m6z4m5z4s4z3p2p5p1s4m5z8s1p4p6p3z2p6p9m0s5m8m5s3s2m3s1m5s8p1m3z3m8m0m3z2s6s1s2s4p3p1s7p"
+        #piletile_str = "2s2s6z9s5p2m2z2s9p9p9s7s8p7p9m3m3z1p7m3m7z2s4p4z5p7m0s3m7z8s5s5z1p2z8p7s1z1z1m4z9s6s1z4m6s5z1p5m6m3m8s7z8p1s2m9p1s4m7s5z3p4s1m6m3s7p3s0p3s1m6m2p4z2m3p6p1s9m5s6z8m9s9m5m8m8s7z7m6p5m5s8p3z6p2m2p3s6s1m1z1p3z8s4p6p0m3p4m7p2p4s4m4p6m8m5z2p5p4s7m7p6s4z7s4p9m9p4s2z1s3p6z6z8m3z2z"
         return piletile_str, hashlib.sha512(piletile_str.encode("utf-8")).hexdigest()
 
     def shuffle(self, tilepile_, seed_):
