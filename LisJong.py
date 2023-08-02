@@ -712,9 +712,24 @@ class Table():
                             fullhand_copy.append(tile)
 
                 if -1 in shanten_triple:
-                    pass
+                    # 役があって上がれるかの確認
+                    score = LisJongUtils.calculate_score("".join(self.plinfo.hands[turnplayer]),
+                                                         self.plinfo.exposes[turnplayer],
+                                                         drawtile_id, True, turnplayer == self.game,
+                                                         WIND_TABLE[self.round],
+                                                         WIND_TABLE[mjlogger.relativize(turnplayer, self.game)],
+                                                         self.plinfo.riichi_flag[turnplayer],
+                                                         self.plinfo.oneshot_flag[turnplayer],
+                                                         self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                         False, self.dora, self.underneath_dora)
+                    if LisJongUtils.winnable_check(score):
+                        tsumoable = True
+                    else:
+                        tsumoable = False
+                else:
+                    tsumoable = False
 
-                tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, -1 in shanten_triple)
+                tsumo_result = self.players[turnplayer].draw(drawtile_id, riichi_list, tsumoable)
 
             else:
                 # 自摸なし
@@ -744,8 +759,19 @@ class Table():
                         for waits in machiresult:
                             # TODO 本来はフリテンチェック、役ありチェックが必要
                             if str(tsumo_result[1].replace("0", "5")) in waits[1]:
-                                callmessage += "Ron,"
-                                break
+                                # 役ありチェック
+                                score = LisJongUtils.calculate_score("".join(self.plinfo.hands[plid]),
+                                                                     self.plinfo.exposes[plid],
+                                                                     tsumo_result[1], False, plid == self.game,
+                                                                     WIND_TABLE[self.round], WIND_TABLE[
+                                                                         mjlogger.relativize(plid, self.game)],
+                                                                     self.plinfo.riichi_flag[plid],
+                                                                     self.plinfo.oneshot_flag[plid],
+                                                                     self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                                     False, self.dora, self.underneath_dora)
+                                if LisJongUtils.winnable_check(score):
+                                    callmessage += "Ron,"
+                                    break
                         # 鳴く人がいれば、turnplayerから逆順に確認する　条件：残りはいがある、立直していない
                         if self.next_tsumo_id + self.kong_count < TILE_TOTAL - DEADWALL_COUNT and not self.plinfo.riichi_flag[plid]:
                             calla = LisJongUtils.check_call("".join(self.plinfo.hands[plid]), tsumo_result[1])

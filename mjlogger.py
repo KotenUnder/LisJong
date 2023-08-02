@@ -110,7 +110,17 @@ class DennoJson(MjLogger):
                 # 左なら-, = +の記号
                 fulou_mark_table = ["", "+", "=", "-"]
                 relative_discarder = relativize(action["discarder"], action["caller"])
-                form = lisjong_to_tenhou(action["exposed"].strip("{}")) + fulou_mark_table[relative_discarder]
+                # 特殊処理 5をないて自分がを出すなら505, 0をないたなら550
+                if action["voice"] == "Pon" and action["discarded"][0] == "5":
+                    if "0" in action["exposed"]:
+                        form = action["discarded"][1] + "505" + fulou_mark_table[relative_discarder]
+                    else:
+                        form = lisjong_to_tenhou(action["exposed"].strip("{}")) + fulou_mark_table[relative_discarder]
+                elif action["voice"] == "Pon" and action["discarded"][0] == "5":
+                    form = action["discarded"][1] + "550" + fulou_mark_table[relative_discarder]
+                else:
+                    form = lisjong_to_tenhou(action["exposed"].strip("{}")) + fulou_mark_table[relative_discarder]
+
                 game.append(
                     {
                         "fulou":{"l":relativize(action["caller"], id_offset), "m":form}

@@ -1708,6 +1708,16 @@ def logic_tile(handstr_, known_tiles={}):
 
     return upgraders
 
+
+# 和了可能かどうかを調べる
+def winnable_check(score_):
+    yakulist = score_[2]
+    for yaku in yakulist:
+        if "Dora" not in yaku:
+            return True
+    return False
+
+
 def tile_index(tilecode):
     index = 0
     try:
