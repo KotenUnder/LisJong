@@ -1526,7 +1526,7 @@ def tileid_from_str(tileidstr_):
 def check_call(handstr_, discarded_):
     #listに変換
     discarded_ = discarded_.replace("0", "5")
-    handstr_black = handstr_.replace("0", "5")
+    handstr_black = arrange_tile(handstr_.replace("0", "5"))
     handlist = []
     for i in range(int(len(handstr_black)/2)):
         handlist.append(handstr_black[i*2:i*2+2])
@@ -1553,12 +1553,29 @@ def check_call(handstr_, discarded_):
 
     #ポンのチェック
     if handlist.count(discarded_) >= 2:
-        result["Pon"].append([discarded_, discarded_])
+        # 赤対応
+        if paicheck_redpossible(discarded_):
+            # 赤を持っていたら、持っているパターンも登録する
+            if discarded_.replace("5", "0") in handstr_:
+                result["Pon"].append([discarded_, discarded_.replace("5", "0")])
+            # 2枚持っているなら
+            if handlist.count(discarded_) >= 3 or discarded_.replace("5", "0") not in handstr_:
+                result["Pon"].append([discarded_, discarded_])
+        else:
+            result["Pon"].append([discarded_, discarded_])
 
     if handlist.count(discarded_) >= 3:
         result["Kan"].append([discarded_, discarded_, discarded_])
 
     return result
+
+
+def paicheck_redpossible(paicode_):
+    if paicode_[1] != "z":
+        if paicode_[0] == "5" or paicode_[0] == "0":
+            return True
+    else:
+        return False
 
 
 def remove_from_hand(handstr_, removelist_):

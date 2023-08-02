@@ -570,6 +570,12 @@ class Table():
         # 名前設定
         self.players = [Saikyochan("keyboard"), KoritsuChu("1"), KoritsuChu("2"), KoritsuChu("3")]
 
+        # ウマ
+        self.uma = [30, 10, -10, -30]
+
+        # オカ
+        self.oka = [15, -5, -5, -5]
+
         while True:
             lastgame = self.start_game()
             self.logger.write_game(**self.loginfo)
@@ -578,16 +584,38 @@ class Table():
                 break
 
 
+        vps = [self.plinfo.scores[plid]/1000 for plid in range(4)]
+        ranker = self.ranker(vps)
+        for plid in range(4):
+            vps[plid] += self.uma[ranker[plid] - 1] + self.oka[ranker[plid] - 1]
+
+
         # 最終的な結果作成
         result = {
             "score":[self.plinfo.scores[plid] for plid in range(4)],
-            "rank":[1,2,3,4],
-            "point":[0,0,0,0]
+            "rank":ranker,
+            "point":vps
         }
         self.logger.end_match(**result)
         self.logger.output()
 
 
+    def ranker(self, point_list_):
+        # トップから順に同点回避のために
+        geta = [0] * len(point_list_)
+        for i in range(len(point_list_)):
+            geta[i] = point_list_[i] - (i / 10000)
+
+        kaidan = sorted(geta, reverse=True)
+        result = [0] * len(point_list_)
+
+        # kaidan = [50, 40, 30, 10]
+        for i in range(len(kaidan)):
+            # kaidan_iを持っている人がrank i
+            haver = geta.index(kaidan[i])
+            result[haver] = i + 1
+
+        return result
 
     def start_game(self):
 
@@ -775,7 +803,7 @@ class Table():
 
                         # 手配からさらしたぶんを削除
                         for placeid in range(len(callret[caller][1])):
-                                self.plinfo.hands[caller].remove(callret[caller][1][placeid])
+                            self.plinfo.hands[caller].remove(callret[caller][1][placeid])
                         break
 
                 # 何もなしに捨てはいが確定している???
@@ -1060,7 +1088,7 @@ class Table():
 
         #中身を文字列としてつなぎ合わせる
         piletile_str = "".join(tile_pile) + "_" + str(datetime.datetime.now())
-        #piletile_str = "2s2s6z9s5p2m2z2s9p9p9s7s8p7p9m3m3z1p7m3m7z2s4p4z5p7m0s3m7z8s5s5z1p2z8p7s1z1z1m4z9s6s1z4m6s5z1p5m6m3m8s7z8p1s2m9p1s4m7s5z3p4s1m6m3s7p3s0p3s1m6m2p4z2m3p6p1s9m5s6z8m9s9m5m8m8s7z7m6p5m5s8p3z6p2m2p3s6s1m1z1p3z8s4p6p0m3p4m7p2p4s4m4p6m8m5z2p5p4s7m7p6s4z7s4p9m9p4s2z1s3p6z6z8m3z2z"
+        #piletile_str = "3m8s6z5p2z0m4p1s7m2p1m7p3p1s4s8s9p2m3p8s3s1m7s7z8p2s1s9m5z2z5p2m4z9s2p7m1z3s6m7s7z6z4s6m8s8m1z7p9s5s1p1p2p0s7z7z1m9p6s5p8m4p2s5m6p4p4z4z5s8p4m2s2m9s3p5z2p6p1p5z6s1s7p6z2z6p3m2m9p3z2s5s1z6z6p7m9m6m1m7s7s9m4s6s4m4m3p7p3s3m1z8m6m3s7m0p3z8p3z8m9s4s4z2z9p6s3m3z5m5z4m1p4p9m8p5m"
         return piletile_str, hashlib.sha512(piletile_str.encode("utf-8")).hexdigest()
 
     def shuffle(self, tilepile_, seed_):
