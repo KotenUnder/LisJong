@@ -584,7 +584,7 @@ class Table():
                 break
 
 
-        vps = [self.plinfo.scores[plid]/1000 for plid in range(4)]
+        vps = [(self.plinfo.scores[plid] - initial_score)/1000 for plid in range(4)]
         ranker = self.ranker(vps)
         for plid in range(4):
             vps[plid] += self.uma[ranker[plid] - 1] + self.oka[ranker[plid] - 1]
@@ -880,7 +880,7 @@ class Table():
                         scorediff[plid] = - diffpoint_child
                         self.plinfo.scores[plid] -= diffpoint_child
 
-            self.plinfo.scores[plid] += 1000*self.deposit
+            self.plinfo.scores[turnplayer] += 1000*self.deposit
             self.deposit = 0
 
             # 上がりのログ保存
@@ -918,9 +918,9 @@ class Table():
             print(score)
             diffpoint = int(score[0]) + self.extra * 300
             self.plinfo.scores[payer_id] -= diffpoint
-            self.plinfo.scores[payer_id] += diffpoint
+            self.plinfo.scores[winner_id] += diffpoint
 
-            self.plinfo.scores[payer_id] += 1000*self.deposit
+            self.plinfo.scores[winner_id] += 1000*self.deposit
 
             # 上がりのログ保存
             self.loginfo["win"] = {
