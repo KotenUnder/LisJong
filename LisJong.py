@@ -48,6 +48,14 @@ class PlayersInfo:
         self.hands[plid_].remove(discard_)
         self.hands[plid_].append(draw_)
 
+
+    def get_pure_pond(self, plid_):
+        purepond = []
+        for discard in self.ponds[plid_]:
+            purepond.append(discard[0])
+        return purepond
+
+
 class Janshi():
     def __init__(self, name_, initial_score_=25000):
         self.name = name_
@@ -143,12 +151,6 @@ class Janshi():
         else:
             return "Skip", []
 
-
-    def inform_call(self, turnplayer_relative_, discarded_, callplayer_relative_, voice_, exposed_):
-        #すでに巣手配処理は去れていると考えて
-
-        #巣手配に対して追加する
-        self.ponds[callplayer_relative_].append(exposed_)
 
     def engine_call(self, discarded_, choice_, message_):
         if message_.startswith("Ron"):
@@ -344,15 +346,6 @@ class Human(Janshi):
         #tilecode = ""
 
         if tilecode == "Tsumo":
-            waits = LisJongUtils.machi("".join(self.hand), [])
-            # 当たっているものを
-            for wait in waits:
-                if draw_pai_ in wait[1]:
-                    # 当たっていればそれから点数計算
-                    agari = LisJongUtils.calculate_score_one(wait[0], [], draw_pai_,
-                                                             True, True, "1z", "1z", True, False, False, False,
-                                                             ["3m"], ["4m"], False)
-                    print(agari)
             return "Tsumo", False, False
 
         # 立直可能であれば立直する
@@ -430,7 +423,7 @@ class Saikyochan(KoritsuChu):
                 knowns.append(discard[0])
 
         # 背理を使って最善を出す
-        hairi = LisJongUtils.logic_tile2("".join(self.hand)+draw_pai_, knowns)
+        hairi = LisJongUtils.logic_tile("".join(self.hand)+draw_pai_, self.exposes[0], knowns)
         maxuke = 0
         maxri = ""
         for ri in hairi:
@@ -756,20 +749,37 @@ class Table():
                     callmessage = ""
                     if plid != turnplayer:
                         machiresult = LisJongUtils.machi("".join(self.plinfo.hands[plid]), self.plinfo.exposes[plid])
+                        all_waits = []
                         for waits in machiresult:
-                            # TODO 本来はフリテンチェック、役ありチェックが必要
+                            all_waits.extend(waits[1])
+                        for waits in machiresult:
+                            # TODO 本来はフリテンチェック
                             if str(tsumo_result[1].replace("0", "5")) in waits[1]:
+                                # 全部の捨てはい作成
+                                sacred = self.plinfo.get_pure_pond(plid)
+                                sacred_flag = False
+                                # 自分の捨てはいによるフリテン
+                                for disc in sacred:
+                                    if disc in all_waits:
+                                        sacred_flag = True
+                                        break
+                                if sacred_flag:
+                                    break
                                 # 役ありチェック
-                                score = LisJongUtils.calculate_score("".join(self.plinfo.hands[plid]),
-                                                                     self.plinfo.exposes[plid],
-                                                                     tsumo_result[1], False, plid == self.game,
-                                                                     WIND_TABLE[self.round], WIND_TABLE[
-                                                                         mjlogger.relativize(plid, self.game)],
-                                                                     self.plinfo.riichi_flag[plid],
-                                                                     self.plinfo.oneshot_flag[plid],
-                                                                     self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
-                                                                     False, self.dora, self.underneath_dora)
-                                if LisJongUtils.winnable_check(score):
+                                if not self.plinfo.riichi_flag[plid]:
+
+                                    score = LisJongUtils.calculate_score("".join(self.plinfo.hands[plid]),
+                                                                         self.plinfo.exposes[plid],
+                                                                         tsumo_result[1], False, plid == self.game,
+                                                                         WIND_TABLE[self.round], WIND_TABLE[
+                                                                             mjlogger.relativize(plid, self.game)],
+                                                                         self.plinfo.riichi_flag[plid],
+                                                                         self.plinfo.oneshot_flag[plid],
+                                                                         self.next_tsumo_id == TILE_TOTAL - DEADWALL_COUNT - self.kong_count,
+                                                                         False, self.dora, self.underneath_dora)
+                                    # フリテンチェック：捨てはいによるフリテン
+
+                                if self.plinfo.riichi_flag[plid] or LisJongUtils.winnable_check(score):
                                     callmessage += "Ron,"
                                     break
                         # 鳴く人がいれば、turnplayerから逆順に確認する　条件：残りはいがある、立直していない
@@ -817,9 +827,6 @@ class Table():
                         called = "{" + called + "}"
 
                         self.plinfo.exposes[caller].append(called)
-                        for p in range(4):
-                            self.players[p].inform_call((turnplayer - p) % 4, tsumo_result[1],
-                                                        (caller - p) % 4, callret[caller][0], called)
 
                         self.loginfo["actions"].append({
                             "action":"call", "caller":caller, "discarder":turnplayer,
@@ -833,6 +840,9 @@ class Table():
                         break
 
                 # 何もなしに捨てはいが確定している???
+                # (捨てはい、つもぎり、りーち、泣きがないなら-1or鳴いた人
+                self.plinfo.ponds[turnplayer].append((tsumo_result[1], tsumo_result[2], tsumo_result[0] == "Riichi",
+                                                      -1 if len(called) == 0 else caller))
                 for qlid in range(4):
                     self.players[qlid].inform_discard((turnplayer - qlid) % 4, tsumo_result[1], tsumo_result[2], tsumo_result[0] == "Riichi",
                                                       -1 if len(called) == 0 else (caller - qlid) % 4, called)

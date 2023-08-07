@@ -1668,7 +1668,7 @@ def logic_tile2(handstr_, known_tiles={}):
     return upgraders
 
 
-def logic_tile(handstr_, known_tiles={}):
+def logic_tile(handstr_, exposes_=[], known_tiles={}):
     # 並び替え
     handlist = tile_disintegrate(handstr_.replace("0", "5"))
 
@@ -1676,7 +1676,7 @@ def logic_tile(handstr_, known_tiles={}):
     upgraders = {}
 
     # 名に切る問題だが、まずは現在のシャンテン数を出す
-    nowshanten = shanten(handstr_)[0]
+    nowshanten = shanten(handstr_, exposes_)[0]
 
     # キル杯ごとに、何を積もればシャンテン数が上がるのかを計算する
     for i in range(len(handlist)):
@@ -1697,14 +1697,18 @@ def logic_tile(handstr_, known_tiles={}):
                     temphand.append(handlist[j])
             # この状態でシャンテン数を出す
             temphand.sort(key=tile_index)
-            nextshanten = shanten("".join(temphand))[0]
+            nextshanten = shanten("".join(temphand), exposes_)[0]
             # シャンテン数が減っているなら、記録する
             if nextshanten < nowshanten:
                 upgraders[handlist[i]] += 4
                 # 既に使用済みがあるならその分減らす
-                if tsumo in known_tiles:
-                    upgraders[handlist[i]] -= known_tiles[tsumo]
-                upgraders[handlist[i]] -= handlist.count(tsumo)
+                try:
+                    if tsumo in known_tiles:
+                        upgraders[handlist[i]] -= known_tiles.count(tsumo)
+                    upgraders[handlist[i]] -= handlist.count(tsumo)
+                except TypeError as e:
+                    input()
+                    print(e.__str__())
 
     return upgraders
 
@@ -1792,7 +1796,7 @@ if __name__ == '__main__':
 
     pond = ["1m", "9m"]
 
-    safe = shanten_normal(hand, [])
+    safe = logic_tile("1m2m3m4p5p6p7p3s3s4s", ["{1z1z1z}"])
 
     result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
 
