@@ -993,7 +993,7 @@ class Table():
             tempaier_list = []
             noten_list = []
             for plid in range(4):
-                shanten_triple = LisJongUtils.shanten("".join(self.plinfo.hands[plid]))
+                shanten_triple = LisJongUtils.shanten("".join(self.plinfo.hands[plid]), self.plinfo.exposes[plid])
                 if 0 in shanten_triple:
                     tempaier_list.append(plid)
                 else:
@@ -1147,8 +1147,3 @@ if __name__ == '__main__':
 
     taku.start_match(["1", "2", "3", "4"], {})
 
-#    serv = LisJongServer()
-#    serv.start(80)
-
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
