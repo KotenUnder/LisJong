@@ -33,11 +33,16 @@ class PlayersInfo:
         self.ponds = [[], [], [], []]
         self.riichi_flag = [False] * 4
         self.oneshot_flag = [False] * 4
+        self.sacred_discard = [[], [], [], []]
 
     def sorthand(self):
         for hand in self.hands:
             hand.sort(key=LisJongUtils.tile_index)
 
+
+    def add_sacred_discard(self, plid_, tile_):
+        if not tile_ in self.sacred_discard[plid_]:
+            self.sacred_discard[plid_].append(tile_)
 
     def loot(self, plid_, draw_, discard_):
         if draw_ == discard_:
@@ -167,8 +172,6 @@ class Janshi():
     def inform_dora_additional(self, tilecode_):
         pass
 
-
-
     def inform_newdora(self, tilecode_):
         self.doras.append(tilecode_)
 
@@ -182,7 +185,6 @@ class Janshi():
 
     def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         return draw_pai_, riichi_, True
-
 
     def engine_chow(self):
         pass
@@ -222,7 +224,6 @@ class RemoteJanshi(Janshi):
         super.__init__()
         self.connection = VirtualClient(conn)
 
-
     def engine_discard(self, draw_pai_, riichi_=[], tsumo_=False, kong_=[]):
         message = "DRAW {}".format(draw_pai_)
 
@@ -239,17 +240,14 @@ class RemoteJanshi(Janshi):
             parts = ret.split(" ")
             return "Discard", parts[1], parts[2]
 
-
     def inform_dora_additional(self, tilecode_):
         message = "DORA {}".format(tilecode_)
         self.connection.send_message(message)
 
 
-
 class VirtualClient:
     def __init__(self, conn_):
         self.connection = conn_
-
 
     def send_message(self, message_):
         self.connection.send(message_)
@@ -269,6 +267,7 @@ class VirtualClient:
             print(e)
         finally:
             self.connection.settimeout(None)
+
 
 class KoritsuChu(Janshi):
     def engine_discard(self, draw_pai_, riichi_=False, tsumo_=False, kong_=[]):
@@ -299,8 +298,8 @@ class KoritsuChu(Janshi):
         if maxri not in self.hand and maxri != draw_pai_:
             maxri = maxri.replace("5", "0")
 
-        #print("".join(self.hand) + "," + draw_pai_)
-        #print("Discard {0}".format(maxri))
+        # print("".join(self.hand) + "," + draw_pai_)
+        # print("Discard {0}".format(maxri))
         return command, maxri, False
 
     def engine_called_discard(self):
@@ -343,7 +342,7 @@ class Human(Janshi):
         print(line)
 
         tilecode = input()
-        #tilecode = ""
+        # tilecode = ""
 
         if tilecode == "Tsumo":
             return "Tsumo", False, False
@@ -361,9 +360,8 @@ class Human(Janshi):
         else:
             return command, tilecode, True
 
-
     def engine_call(self, discarded_, choice_, message_):
-        #泣きがあったことを示す
+        # 泣きがあったことを示す
         print("Discarded {}".format(discarded_))
         print(choice_)
 
@@ -435,16 +433,14 @@ class Saikyochan(KoritsuChu):
         if maxri not in self.hand and maxri != draw_pai_:
             maxri = maxri.replace("5", "0")
 
-        #print("".join(self.hand) + "," + draw_pai_)
-        #print("Discard {0}".format(maxri))
+        # print("".join(self.hand) + "," + draw_pai_)
+        # print("Discard {0}".format(maxri))
         return command, maxri, False
-
 
     def engine_call(self, discarded_, choice_, message_):
         # 役牌だけはなく
         if message_.startswith("Ron"):
             return "Ron", []
-
 
         if len(choice_["Pon"]) > 0:
             pontarget = choice_["Pon"][0]
@@ -454,7 +450,8 @@ class Saikyochan(KoritsuChu):
 
         return "Skip", []
 
-class LisJongServer():
+
+class LisJongServer:
     def __init__(self):
         self.clients = []
 
@@ -463,7 +460,7 @@ class LisJongServer():
         s.bind((socket.gethostname(), port_))
         s.listen(5)
 
-        #接続待機
+        # 接続待機
         while True:
             try:
                 conn, addr = s.accept()
@@ -471,7 +468,7 @@ class LisJongServer():
                 s.close()
                 exit()
                 break
-            #クライアントの追加
+            # クライアントの追加
             self.clients.append((conn, addr))
 
             # HELLOを送信するかチェックして、それを受け取ったらよし
@@ -480,10 +477,9 @@ class LisJongServer():
             thread = threading.Thread(target=self.hello, args=(conn, addr), daemon=True)
             thread.start()
 
-            #４人揃ったら待機終了
+            # ４人揃ったら待機終了
             if len(self.clients) >= count_:
                 break
-
 
     def hello(self, connection_, address_):
         while True:
@@ -503,7 +499,6 @@ class LisJongServer():
                 print(e)
                 break
 
-
     def receiver(self, connection_, address_):
         while True:
             try:
@@ -521,10 +516,7 @@ class LisJongServer():
                 break
 
 
-
-
-class Table():
-
+class Table:
     def __init__(self):
         # 現在の場
         self.round = 0
@@ -533,9 +525,7 @@ class Table():
         # 現在の本場
         self.extra = 0
 
-
     def start_match(self, pnames_, settings_):
-
         # ログの記録先
         self.logger = mjlogger.DennoJson("sample.json", pnames_, "LisJong対戦開幕戦")
         self.loginfo = {}
@@ -576,22 +566,19 @@ class Table():
             if not lastgame:
                 break
 
-
         vps = [(self.plinfo.scores[plid] - initial_score)/1000 for plid in range(4)]
         ranker = self.ranker(vps)
         for plid in range(4):
             vps[plid] += self.uma[ranker[plid] - 1] + self.oka[ranker[plid] - 1]
 
-
         # 最終的な結果作成
         result = {
-            "score":[self.plinfo.scores[plid] for plid in range(4)],
-            "rank":ranker,
-            "point":vps
+            "score": [self.plinfo.scores[plid] for plid in range(4)],
+            "rank": ranker,
+            "point": vps
         }
         self.logger.end_match(**result)
         self.logger.output()
-
 
     def ranker(self, point_list_):
         # トップから順に同点回避のために
@@ -619,14 +606,13 @@ class Table():
 
         gameresult = ""
 
-
         # 灰山生成
         tilepilestr, hashstr = self.create_tilepile()
 
         self.wall = []
         for i in range(TILE_TOTAL):
             self.wall.append(tilepilestr[2 * i:2 * i + 2])
-        #配牌
+        # 配牌
         starting_hands = ["", "", "", ""]
         # 4つずうつ3回
         for i in range(3):
@@ -763,6 +749,9 @@ class Table():
                                     if disc in all_waits:
                                         sacred_flag = True
                                         break
+                                # 立直後のフリテン
+
+                                # 同順内のフリテン
                                 if sacred_flag:
                                     break
                                 # 役ありチェック
@@ -1079,31 +1068,27 @@ class Table():
                 self.game += 1
             return True
 
-
     def renchan(self):
         self.extra += 1
         return True
 
-
+    @staticmethod
     def dealer_repeat_check(self, dealer_win_, dealer_tenpai_):
         # 親が上がっているか、聴牌しているなら連荘条件を満たす
         return dealer_win_ or dealer_tenpai_
 
-
-
-    #
     # 返り値：山コード　ハッシュ
     def create_tilepile(self):
-        #4種あるもの
+        # 4種あるもの
         hai4list = ["1m","2m","3m","4m","6m","7m","8m","9m",
                     "1p", "2p", "3p", "4p", "6p", "7p", "8p", "9p",
                     "1s", "2s", "3s", "4s", "6s", "7s", "8s", "9s",
                     "1z", "2z", "3z", "4z", "5z", "6z", "7z"]
-        #3種あるもの
+        # 3種あるもの
         hai3list = ["5m", "5p", "5s"]
-        #1個あるもの
+        # 1個あるもの
         hai1list = ["0m", "0p", "0s"]
-        #一つのリストを作る
+        # 一つのリストを作る
         tile_pile = []
         for tilename in hai4list:
             for i in range(4):
@@ -1114,17 +1099,17 @@ class Table():
         for tilename in hai1list:
             tile_pile.append(tilename)
 
-        #並び替え
-        #シードは日付ミリ秒
+        # 並び替え
+        # シードは日付ミリ秒
         epochtime = int(time.time()*1000 % 2**31)
         self.shuffle(tile_pile, epochtime)
-        #メモリ使用率から再度シャッフル
+        # メモリ使用率から再度シャッフル
         memory = (psutil.virtual_memory().total + psutil.virtual_memory().available) % 2**31
         self.shuffle(tile_pile, memory)
 
-        #中身を文字列としてつなぎ合わせる
+        # 中身を文字列としてつなぎ合わせる
         piletile_str = "".join(tile_pile) + "_" + str(datetime.datetime.now())
-        #piletile_str = "3m8s6z5p2z0m4p1s7m2p1m7p3p1s4s8s9p2m3p8s3s1m7s7z8p2s1s9m5z2z5p2m4z9s2p7m1z3s6m7s7z6z4s6m8s8m1z7p9s5s1p1p2p0s7z7z1m9p6s5p8m4p2s5m6p4p4z4z5s8p4m2s2m9s3p5z2p6p1p5z6s1s7p6z2z6p3m2m9p3z2s5s1z6z6p7m9m6m1m7s7s9m4s6s4m4m3p7p3s3m1z8m6m3s7m0p3z8p3z8m9s4s4z2z9p6s3m3z5m5z4m1p4p9m8p5m"
+        # piletile_str = "3m8s6z5p2z0m4p1s7m2p1m7p3p1s4s8s9p2m3p8s3s1m7s7z8p2s1s9m5z2z5p2m4z9s2p7m1z3s6m7s7z6z4s6m8s8m1z7p9s5s1p1p2p0s7z7z1m9p6s5p8m4p2s5m6p4p4z4z5s8p4m2s2m9s3p5z2p6p1p5z6s1s7p6z2z6p3m2m9p3z2s5s1z6z6p7m9m6m1m7s7s9m4s6s4m4m3p7p3s3m1z8m6m3s7m0p3z8p3z8m9s4s4z2z9p6s3m3z5m5z4m1p4p9m8p5m"
         return piletile_str, hashlib.sha512(piletile_str.encode("utf-8")).hexdigest()
 
     def shuffle(self, tilepile_, seed_):
@@ -1135,7 +1120,6 @@ class Table():
             tilepile_[i] = tilepile_[swap_target]
             tilepile_[swap_target] = temp
         return tilepile_
-
 
 
 # Press the green button in the gutter to run the script.

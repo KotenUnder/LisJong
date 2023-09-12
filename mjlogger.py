@@ -299,6 +299,7 @@ YAKU_DICTIONARY = {
     "Straight": [2, "一気通貫"],
     "Straight (open)": [1, "一気通貫"],
     "3 Color Straights": [2, "三色同順"],
+    "3 Color Straights (open)": [1, "三色同順"],
     "3 Concealed Triplets": [2, "三暗刻"],
     "3 Color Triplets":[2, "三色同刻"],
 

@@ -1,4 +1,6 @@
 
+import re
+
 #return
 # fu
 # faan
@@ -420,6 +422,8 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
     # lrgal check
     # 暫定措置として、最初にヒットした待ちだけ
     machiform = machi(closedhandstr_, exposedstrlist_)
+    maxscore = 0
+    maxresult = None
     for waits in machiform:
         if winningpai_.replace("0", "5") in waits[1]:
             # 結果表示
@@ -432,7 +436,14 @@ def calculate_score(closedhandstr_, exposedstrlist_, winningpai_, winbyself_, is
                                          winbyself_, is_dealer_, prevailingwind_, ownwind_,
                                          riichi_, oneshot_, last_, robbing_kong_, doras_, u_doras_)
 
-            return result
+            nowscore = int(re.split(r"A|\-", result[0])[0])
+
+            # この点数がmaxscoreを超えていたなら書き換える
+            if nowscore > maxscore:
+                maxresult = result
+                maxscore = nowscore
+
+    return maxresult
 
     print("Error maybe")
 
@@ -1790,15 +1801,13 @@ if __name__ == '__main__':
 
     hand = ["(1p2p3p)", "(4p0p6p)", "1p1p", "(7p8p9p)", "[9p9p]"]
     naki = ["{1p1p1p}"]
-    agari = "1p"
+    agari = "7p"
 
-    hand = '5m5m3p4p5p4s5s6s6s7s8s1p1p1p'
+    hand = '6m7m8m2p2p0p6p7p8p9p7s8s9s'
+    naki = []
 
-    pond = ["1m", "9m"]
 
-    safe = logic_tile("1m2m3m4p5p6p7p3s3s4s", ["{1z1z1z}"])
-
-    result = calculate_score_one(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5s"], [])
+    result = calculate_score(hand, naki, agari, True, False, "2z", "2z", 1, False, False, False, ["5m"], [])
 
 
     for line in problemfile:
